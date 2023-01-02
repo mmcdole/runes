@@ -4,17 +4,20 @@ import (
 	"net"
 
 	"github.com/mmcdole/runes/internal/client"
+	"github.com/mmcdole/runes/internal/util"
 )
 
 type TelnetServer struct {
 	Address   string
 	connected chan client.ClientConnection
+	logger    util.Logger
 }
 
-func NewTelnetServer(address string, connected chan client.ClientConnection) *TelnetServer {
+func NewTelnetServer(logger util.Logger, address string, connected chan client.ClientConnection) *TelnetServer {
 	return &TelnetServer{
 		Address:   address,
 		connected: connected,
+		logger:    logger,
 	}
 }
 
@@ -25,6 +28,8 @@ func (ts *TelnetServer) Run() error {
 	}
 
 	go ts.acceptConnections(ln)
+
+	ts.logger.Debug("TelnetServer: Started @ '%s'", ts.Address)
 	return nil
 }
 
@@ -36,6 +41,8 @@ func (ts *TelnetServer) acceptConnections(ln net.Listener) {
 		if err != nil {
 			return
 		}
+
+		ts.logger.Debug("TelnetServer: Client Connected: '%s'", conn.RemoteAddr().String())
 
 		// Create telnet connection wrapper struct
 		tc := NewTelnetConnection(conn)

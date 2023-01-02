@@ -15,26 +15,23 @@ var (
 	// Client Connection Sources
 	telnetServer    *telnet.TelnetServer
 	websocketServer *websocket.WebsocketServer
-
 	// Client Connection Events
 	connectionChan chan client.ClientConnection
 
-	// Session Manager which attaches clients to sessions
 	sessionManager *core.SessionManager
+	logger         util.Logger
 )
 
 func main() {
-	log := util.Logger{}
-	log.SetLogLevel(util.TraceLogLevel)
+	logger = util.Logger{}
+	logger.SetLogLevel(util.TraceLogLevel)
+
+	logger.Info("Runes Launched!")
 
 	conf := config.LoadOrCreateConfig()
 
-	// Setup session manager, default session and start attaching clients
-	sessionManager = core.NewSessionManager()
-	sessionManager.Run()
-
 	// Connection chan for when any client source start producing connections
-	connectionChan := make(chan client.ClientConnection)
+	connectionChan = make(chan client.ClientConnection)
 
 	// Setup telnet client server if configured
 	if conf.Client.Telnet != nil {
@@ -45,6 +42,10 @@ func main() {
 	if conf.Client.Websocket != nil {
 		setupWebsocketServer(conf.Client.Websocket)
 	}
+
+	// Setup session manager, default session and start attaching clients
+	sessionManager = core.NewSessionManager(logger)
+	sessionManager.Start()
 
 	// Receive client connections from servers and pass to session manager
 	for {
@@ -57,7 +58,7 @@ func main() {
 
 func setupTelnetServer(conf *config.TelnetClientConfig) {
 	address := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
-	telnetServer = telnet.NewTelnetServer(address, connectionChan)
+	telnetServer = telnet.NewTelnetServer(logger, address, connectionChan)
 	telnetServer.Run()
 }
 

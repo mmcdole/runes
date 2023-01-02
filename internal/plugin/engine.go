@@ -1,17 +1,24 @@
 package plugin
 
+import (
+	"strings"
+
+	"github.com/mmcdole/runes/internal/util"
+)
+
 type BufferOutput struct {
 	Line   string
 	Buffer string
 }
 
-func NewPluginEngine() *PluginEngine {
+func NewPluginEngine(logger util.Logger) *PluginEngine {
 	return &PluginEngine{
 		InCommandChan:   make(chan string),
 		InTextLineChan:  make(chan string),
 		OutSendChan:     make(chan string),
 		OutCommandChan:  make(chan string),
 		OutTextLineChan: make(chan BufferOutput),
+		logger:          logger,
 	}
 }
 
@@ -35,9 +42,12 @@ type PluginEngine struct {
 	// Output text line(s) to that have been processed
 	// Note: forward text lines and plugin output to the client buffers
 	OutTextLineChan chan BufferOutput
+
+	logger util.Logger
 }
 
 func (pe *PluginEngine) Start() {
+	pe.logger.Debug("PluginEngine: Started")
 	for {
 		select {
 		case command := <-pe.InCommandChan:
@@ -50,11 +60,14 @@ func (pe *PluginEngine) Start() {
 
 func (pe *PluginEngine) handleCommand(command string) {
 	// TODO: process commands and check against alias list
+	pe.logger.Trace("PluginEngine: Processed Command: '%s'", strings.TrimSpace(command))
+
 	pe.OutCommandChan <- command
 }
 
 func (pe *PluginEngine) handleTextLine(line string) {
 	// TODO: process text line, check for actions/triggers/subs/highlights
+	pe.logger.Trace("PluginEngine: Processed Text: %s", line)
 
 	// Don't specify buffer to make it "default"
 	pe.OutTextLineChan <- BufferOutput{Line: line}

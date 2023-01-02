@@ -7,6 +7,7 @@ type LogLevel int
 const (
 	ErrorLogLevel LogLevel = iota
 	InfoLogLevel
+	DebugLogLevel
 	TraceLogLevel
 )
 
@@ -19,18 +20,23 @@ func (l *Logger) SetLogLevel(level LogLevel) {
 }
 
 func (l *Logger) log(level LogLevel, message string, args ...interface{}) {
-	if level < l.logLevel {
+	if level > l.logLevel {
 		return
 	}
 
 	levelRunes := map[LogLevel]string{
-		ErrorLogLevel: "error",
 		InfoLogLevel:  "info",
+		ErrorLogLevel: "error",
+		DebugLogLevel: "debug",
 		TraceLogLevel: "trace",
 	}[level]
 
 	formattedMessage := fmt.Sprintf(message, args...)
 	fmt.Printf("[%s] %s\n", levelRunes, formattedMessage)
+}
+
+func (l *Logger) Debug(message string, args ...interface{}) {
+	l.log(DebugLogLevel, message, args...)
 }
 
 func (l *Logger) Error(message string, args ...interface{}) {

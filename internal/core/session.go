@@ -32,23 +32,27 @@ package core
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/mmcdole/runes/internal/client"
 	"github.com/mmcdole/runes/internal/plugin"
 	"github.com/mmcdole/runes/internal/server"
+	"github.com/mmcdole/runes/internal/util"
 )
 
-func NewSession(name string, server *server.ServerConnection, sm *SessionManager) *Session {
-	pe := &plugin.PluginEngine{}
+func NewSession(logger util.Logger, name string, server server.ServerConnection, sm *SessionManager) *Session {
+	pe := plugin.NewPluginEngine(logger)
 
 	return &Session{
 		Name:           name,
+		server:         server,
 		sessionManager: sm,
 		pluginEngine:   pe,
 		inputChan:      make(chan client.ClientInput),
 		clients:        []client.ClientConnection{},
 		clientBuffers:  map[*client.ClientConnection]string{},
 		buffers:        map[string][]string{},
+		logger:         logger,
 	}
 }
 
@@ -61,14 +65,17 @@ type Session struct {
 	clients        []client.ClientConnection
 	clientBuffers  map[*client.ClientConnection]string
 	buffers        map[string][]string
+	logger         util.Logger
 }
 
 func (s *Session) AttachClient(client client.ClientConnection) {
+	s.logger.Debug("Session: '%s' Client: '%s':  Attached", s.Name, client.Name())
 	s.clients = append(s.clients, client)
 	client.SetInputChan(s.inputChan)
 }
 
 func (s *Session) DetachClient(client client.ClientConnection) {
+	s.logger.Debug("Session: '%s' Client: '%s': Detached", s.Name, client.Name())
 	// Remove the connection from the connections slice
 	for i, c := range s.clients {
 		if c == client {
@@ -131,22 +138,30 @@ func (s *Session) Start() {
 			}
 		}
 	}()
+
+	s.logger.Debug("Session: Started '%s'", s.Name)
 }
 
 func (s *Session) handlePluginCommand(command string) {
+	s.logger.Trace("Session: '%s': Plugin command: '%s'", s.Name, strings.TrimSpace(command))
 	// Foward processed commands from the PluginEngine to the Server
 	s.server.Input() <- command
 }
 
 func (s *Session) handlePluginOutput(output plugin.BufferOutput) {
+	s.logger.Trace("Session: '%s':  Plugin output: '%s'", s.Name, output)
 	// TODO: Write to buffer & send to clients with that buffer as active
 }
 
 func (s *Session) handleServerOutput(output string) {
+	s.logger.Trace("Session: '%s':  Server output: '%s'", s.Name, output)
+
 	s.pluginEngine.InTextLineChan <- output
 }
 
 func (s *Session) handleClientInput(input string) {
+	s.logger.Trace("Session: '%s': Client input: '%s'", s.Name, strings.TrimSpace(input))
+
 	// Check if input is a runes command, otherwise send to plugin engine
 	if ok := s.handleCommand(input); !ok {
 		s.pluginEngine.InCommandChan <- input

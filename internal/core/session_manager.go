@@ -4,6 +4,7 @@ import (
 	"github.com/mmcdole/runes/internal/client"
 	"github.com/mmcdole/runes/internal/server"
 	"github.com/mmcdole/runes/internal/server/runes"
+	"github.com/mmcdole/runes/internal/util"
 )
 
 const defaultSessionName = "default"
@@ -11,24 +12,29 @@ const defaultSessionName = "default"
 type SessionManager struct {
 	connected chan client.ClientConnection
 	sessions  map[string]*Session
+	logger    util.Logger
 }
 
-func NewSessionManager() *SessionManager {
+func NewSessionManager(logger util.Logger) *SessionManager {
 	sm := &SessionManager{
 		sessions:  map[string]*Session{},
 		connected: make(chan client.ClientConnection),
+		logger:    logger,
 	}
-
-	// Setup default session for when clients initially connect
-	defaultServer := &runes.RunesServer{}
-	defaultSession := sm.CreateSession(defaultSessionName, defaultServer)
-	defaultServer.Connect()
-	defaultSession.Start()
 
 	return sm
 }
 
-func (sm *SessionManager) Run() {
+func (sm *SessionManager) Start() {
+	sm.logger.Debug("SessionManager: Started")
+
+	// Setup default session for when clients initially connect
+	defaultServer := &runes.RunesServer{}
+	defaultSession := sm.CreateSession(defaultSessionName, defaultServer)
+
+	defaultServer.Connect()
+	defaultSession.Start()
+
 	go func() {
 		for {
 			select {
@@ -45,12 +51,10 @@ func (sm *SessionManager) CreateSession(name string, server server.ServerConnect
 		return nil
 	}
 
-	session := &Session{
-		Name:   name,
-		server: server,
-	}
+	session := NewSession(sm.logger, name, server, sm)
 
 	sm.sessions[name] = session
+	sm.logger.Debug("SessionManager: Created '%s' Session", name)
 	return session
 }
 
