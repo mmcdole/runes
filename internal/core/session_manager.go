@@ -1,24 +1,29 @@
 package core
 
-import "github.com/mmcdole/runes/internal/server"
+import (
+	"github.com/mmcdole/runes/internal/client"
+	"github.com/mmcdole/runes/internal/server"
+	"github.com/mmcdole/runes/internal/server/runes"
+)
 
 const defaultSessionName = "default"
 
 type SessionManager struct {
-	connected chan ClientConnection
+	connected chan client.ClientConnection
 	sessions  map[string]*Session
 }
 
 func NewSessionManager() *SessionManager {
 	sm := &SessionManager{
 		sessions:  map[string]*Session{},
-		connected: make(chan ClientConnection),
+		connected: make(chan client.ClientConnection),
 	}
 
 	// Setup default session for when clients initially connect
-	defaultServer := &server.DefaultServer{}
-	sm.CreateSession(defaultSessionName, defaultServer)
+	defaultServer := &runes.RunesServer{}
+	defaultSession := sm.CreateSession(defaultSessionName, defaultServer)
 	defaultServer.Connect()
+	defaultSession.Start()
 
 	return sm
 }
@@ -34,7 +39,7 @@ func (sm *SessionManager) Run() {
 	}()
 }
 
-func (sm *SessionManager) CreateSession(name string, server ServerConnection) *Session {
+func (sm *SessionManager) CreateSession(name string, server server.ServerConnection) *Session {
 	if _, ok := sm.sessions[name]; ok {
 		// session with the same name already exists
 		return nil
@@ -77,11 +82,11 @@ func (sm *SessionManager) DeleteSession(name string) *Session {
 	return session
 }
 
-func (sm *SessionManager) ConnectedChan() chan ClientConnection {
+func (sm *SessionManager) ConnectedChan() chan client.ClientConnection {
 	return sm.connected
 }
 
-func (sm *SessionManager) handleConnected(client ClientConnection) {
+func (sm *SessionManager) handleConnected(client client.ClientConnection) {
 	ds := sm.GetDefaultSession()
 	ds.AttachClient(client)
 }

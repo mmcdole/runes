@@ -1,14 +1,14 @@
-package client
+package telnet
 
 import (
 	"fmt"
 	"net"
 
-	"github.com/mmcdole/runes/internal/core"
+	"github.com/mmcdole/runes/internal/client"
 )
 
 type TelnetConnection struct {
-	inputChan      chan string
+	inputChan      chan client.ClientInput
 	outputChan     chan string
 	disconnectChan chan bool
 	conn           net.Conn
@@ -16,7 +16,6 @@ type TelnetConnection struct {
 
 func NewTelnetConnection(conn net.Conn) *TelnetConnection {
 	return &TelnetConnection{
-		inputChan:      make(chan string),
 		outputChan:     make(chan string),
 		disconnectChan: make(chan bool),
 		conn:           conn,
@@ -27,8 +26,12 @@ func (tc *TelnetConnection) Name() string {
 	return fmt.Sprintf("telnet:%s", tc.conn.RemoteAddr())
 }
 
-func (tc *TelnetConnection) InputChan() chan string {
+func (tc *TelnetConnection) InputChan() chan client.ClientInput {
 	return tc.inputChan
+}
+
+func (tc *TelnetConnection) SetInputChan(ic chan client.ClientInput) {
+	tc.inputChan = ic
 }
 
 func (tc *TelnetConnection) OutputChan() chan string {
@@ -40,6 +43,7 @@ func (tc *TelnetConnection) DisconnectChan() chan bool {
 }
 
 func (tc *TelnetConnection) Close() error {
+	// TODO: Nate, should I send some 'done' channel a signal to end readinput/sendoutput ?
 	return tc.conn.Close()
 }
 
@@ -50,7 +54,7 @@ func (tc *TelnetConnection) HandleConnection() {
 
 func (tc *TelnetConnection) readInput() {
 	// Read input commands from telnet connection and write to inputChan
-	buf := make([]byte, 1024)
+	buf := make([]byte, 4096)
 	for {
 		n, err := tc.conn.Read(buf)
 		if err != nil {
@@ -58,7 +62,13 @@ func (tc *TelnetConnection) readInput() {
 			tc.disconnectChan <- true
 			break
 		}
-		tc.inputChan <- string(buf[:n])
+		// TODO: Nate! mutex on inputChan access?
+		if tc.inputChan != nil {
+			tc.inputChan <- client.ClientInput{
+				Text:   string(buf[:n]),
+				Client: tc,
+			}
+		}
 	}
 }
 
@@ -74,45 +84,5 @@ func (tc *TelnetConnection) sendOutput() {
 				break
 			}
 		}
-	}
-}
-
-type TelnetServer struct {
-	Address   string
-	connected chan core.ClientConnection
-}
-
-func NewTelnetServer(address string, connected chan core.ClientConnection) *TelnetServer {
-	return &TelnetServer{
-		Address:   address,
-		connected: connected,
-	}
-}
-
-func (ts *TelnetServer) Run() error {
-	ln, err := net.Listen("tcp", ts.Address)
-	if err != nil {
-		return err
-	}
-
-	go ts.acceptConnections(ln)
-	return nil
-}
-
-func (ts *TelnetServer) acceptConnections(ln net.Listener) {
-	defer ln.Close()
-
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			return
-		}
-
-		// Create telnet connection wrapper struct
-		tc := NewTelnetConnection(conn)
-		// Event externally that a new connection has been produced
-		ts.connected <- tc
-		// Begin receiving and sending input/output from the telnet connection
-		go tc.HandleConnection()
 	}
 }

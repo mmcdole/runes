@@ -23,12 +23,13 @@ func LoadOrCreateConfig() *Config {
 
 	// Set the defaults
 	k.Load(confmap.Provider(map[string]interface{}{
-		"server.port":              "2000",
-		"server.host":              "",
-		"mud.commandPrefix":        "!",
-		"mud.commandSeparator":     ";",
-		"mud.idleTime":             300,
-		"mud.disablePluginsOnIdle": true,
+		"client.telnet.port":                 "2000",
+		"client.telnet.host":                 "",
+		"core.commandPrefix":                 "!",
+		"core.commandSeparator":              ";",
+		"core.idleTime":                      300,
+		"core.disablePluginsOnIdle":          true,
+		"core.disablePluginsOnIdleWhitelist": []string{},
 	}, "."), nil)
 
 	// Check if config file exists

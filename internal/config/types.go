@@ -15,8 +15,8 @@ type CoreConfig struct {
 }
 
 type ClientConfig struct {
-	TelnetServer    *TelnetClientConfig    `koanf:"telnet"`
-	WebsocketServer *WebsocketClientConfig `koanf:"websocket"`
+	Telnet    *TelnetClientConfig    `koanf:"telnet"`
+	Websocket *WebsocketClientConfig `koanf:"websocket"`
 }
 
 type TelnetClientConfig struct {

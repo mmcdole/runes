@@ -1,8 +1,18 @@
 package plugin
 
-type TextLineOutput struct {
+type BufferOutput struct {
 	Line   string
 	Buffer string
+}
+
+func NewPluginEngine() *PluginEngine {
+	return &PluginEngine{
+		InCommandChan:   make(chan string),
+		InTextLineChan:  make(chan string),
+		OutSendChan:     make(chan string),
+		OutCommandChan:  make(chan string),
+		OutTextLineChan: make(chan BufferOutput),
+	}
 }
 
 type PluginEngine struct {
@@ -24,5 +34,28 @@ type PluginEngine struct {
 
 	// Output text line(s) to that have been processed
 	// Note: forward text lines and plugin output to the client buffers
-	OutTextLineChan chan TextLineOutput
+	OutTextLineChan chan BufferOutput
+}
+
+func (pe *PluginEngine) Start() {
+	for {
+		select {
+		case command := <-pe.InCommandChan:
+			pe.handleCommand(command)
+		case line := <-pe.InTextLineChan:
+			pe.handleTextLine(line)
+		}
+	}
+}
+
+func (pe *PluginEngine) handleCommand(command string) {
+	// TODO: process commands and check against alias list
+	pe.OutCommandChan <- command
+}
+
+func (pe *PluginEngine) handleTextLine(line string) {
+	// TODO: process text line, check for actions/triggers/subs/highlights
+
+	// Don't specify buffer to make it "default"
+	pe.OutTextLineChan <- BufferOutput{Line: line}
 }
