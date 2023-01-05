@@ -16,5 +16,5 @@
   
 <br>
 <br>
-A proxy-based MUD client with advanced features and a modern Lua based scripting engine.
+A proxy-based MUD client with advanced features and a modern Lua scripting engine.
 </div>
