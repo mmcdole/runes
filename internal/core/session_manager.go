@@ -68,6 +68,14 @@ func (sm *SessionManager) GetSession(name string) *Session {
 	return nil
 }
 
+func (sm *SessionManager) GetSessions() []*Session {
+	sessions := []*Session{}
+	for _, session := range sm.sessions {
+		sessions = append(sessions, session)
+	}
+	return sessions
+}
+
 func (sm *SessionManager) GetDefaultSession() *Session {
 	return sm.GetSession(defaultSessionName)
 }

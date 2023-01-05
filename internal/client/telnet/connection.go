@@ -9,7 +9,7 @@ import (
 )
 
 type TelnetConnection struct {
-	inputChan      chan client.ClientInput
+	inputChan      chan *client.ClientInput
 	outputChan     chan string
 	disconnectChan chan bool
 	conn           net.Conn
@@ -33,11 +33,11 @@ func (tc *TelnetConnection) Name() string {
 	return fmt.Sprintf("telnet:%s", tc.conn.RemoteAddr())
 }
 
-func (tc *TelnetConnection) InputChan() chan client.ClientInput {
+func (tc *TelnetConnection) InputChan() chan *client.ClientInput {
 	return tc.inputChan
 }
 
-func (tc *TelnetConnection) SetInputChan(ic chan client.ClientInput) {
+func (tc *TelnetConnection) SetInputChan(ic chan *client.ClientInput) {
 	tc.inputChan = ic
 }
 
@@ -71,10 +71,12 @@ func (tc *TelnetConnection) readInput() {
 		}
 		// TODO: Nate! mutex on inputChan access?
 		if tc.inputChan != nil {
-			tc.inputChan <- client.ClientInput{
+			ci := client.ClientInput{
 				Text:   string(buf[:n]),
 				Client: tc,
 			}
+
+			tc.inputChan <- &ci
 		}
 	}
 }

@@ -10,8 +10,8 @@ type ClientInput struct {
 type ClientConnection interface {
 	ID() string // UUID
 	Name() string
-	InputChan() chan ClientInput
-	SetInputChan(chan ClientInput)
+	InputChan() chan *ClientInput
+	SetInputChan(chan *ClientInput)
 	OutputChan() chan string
 	DisconnectChan() chan bool
 	Close() error

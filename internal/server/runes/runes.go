@@ -39,8 +39,8 @@ func (ds *RunesServer) Connect() error {
 			ds.sendText(line + "\n")
 		}
 		ds.sendText("\n")
-
 		ds.sendText("Welcome to Runes default session!\n")
+		ds.sendText("\n")
 	}()
 
 	return nil
