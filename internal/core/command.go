@@ -1,6 +1,8 @@
 package core
 
-import "github.com/mmcdole/runes/internal/client"
+import (
+	"github.com/mmcdole/runes/internal/types"
+)
 
 type Command interface {
 	Execute(params *CommandParams) bool
@@ -12,6 +14,6 @@ type CommandParams struct {
 	Command     string
 	Args        []string
 	Session     *Session
-	Executor    *client.ClientConnection
+	Executor    *types.Connection
 	FullCommand string
 }

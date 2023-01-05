@@ -31,29 +31,28 @@
 package core
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/mmcdole/runes/internal/client"
 	"github.com/mmcdole/runes/internal/config"
 	"github.com/mmcdole/runes/internal/plugin"
-	"github.com/mmcdole/runes/internal/server"
+	"github.com/mmcdole/runes/internal/proxy"
+	"github.com/mmcdole/runes/internal/types"
 	"github.com/mmcdole/runes/internal/util"
 )
 
-func NewSession(logger util.Logger, conf *config.Config, name string, server server.ServerConnection, sm *SessionManager) *Session {
+func NewSession(logger util.Logger, conf *config.Config, name string, proxy proxy.ProxyConnection, sm *SessionManager) *Session {
 	pe := plugin.NewPluginEngine(logger)
 	bm := NewBufferManager(conf.Core.BufferSize)
 
 	session := &Session{
 		Name:              name,
 		config:            conf,
-		serverConnection:  server,
-		clientConnections: map[string]client.ClientConnection{},
+		proxyConnection:   proxy,
+		clientConnections: map[string]types.Connection{},
 		sessionManager:    sm,
 		bufferManager:     bm,
 		pluginEngine:      pe,
-		inputChan:         make(chan *client.ClientInput),
+		inputChan:         make(chan *types.ConnectionInput),
 		log:               logger,
 	}
 
@@ -65,17 +64,17 @@ func NewSession(logger util.Logger, conf *config.Config, name string, server ser
 type Session struct {
 	Name              string
 	config            *config.Config
-	inputChan         chan *client.ClientInput
+	inputChan         chan *types.ConnectionInput
 	sessionManager    *SessionManager
 	bufferManager     *BufferManager
 	pluginEngine      *plugin.PluginEngine
-	serverConnection  server.ServerConnection
-	clientConnections map[string]client.ClientConnection
+	proxyConnection   proxy.ProxyConnection
+	clientConnections map[string]types.Connection
 	commandHandlers   map[string]Command
 	log               util.Logger
 }
 
-func (s *Session) AttachClient(client client.ClientConnection) {
+func (s *Session) AttachClient(client types.Connection) {
 	s.log.Debug("[Session@%s]: Client: '%s' Attached", s.Name, client.Name())
 	s.clientConnections[client.ID()] = client
 
@@ -84,26 +83,13 @@ func (s *Session) AttachClient(client client.ClientConnection) {
 	client.SetInputChan(s.inputChan)
 }
 
-func (s *Session) DetachClient(client client.ClientConnection) {
+func (s *Session) DetachClient(client types.Connection) {
 	s.log.Debug("[Session@%s]: Client: '%s' Detached", s.Name, client.Name())
 	delete(s.clientConnections, client.ID())
 	client.SetInputChan(nil)
 }
 
-func (s *Session) SwitchToSession(client client.ClientConnection, sessionName string) (*Session, error) {
-	// Detach the client connection from the current session
-	s.DetachClient(client)
-
-	// Get the new session and attach the client connection to it
-	session := s.sessionManager.GetSession(sessionName)
-	if session == nil {
-		return nil, fmt.Errorf("Switch session failed: target session '%s' not found.", sessionName)
-	}
-	session.AttachClient(client)
-	return session, nil
-}
-
-func (s *Session) SwitchClientToBuffer(client client.ClientConnection, bufferName string) {
+func (s *Session) SwitchClientToBuffer(client types.Connection, bufferName string) {
 	// Assign this client to the provided buffer in manager
 	s.bufferManager.SwitchClientToBuffer(client.ID(), bufferName)
 
@@ -140,7 +126,7 @@ func (s *Session) Start() {
 
 				// TODO: refactor this to maybe not use ClientInput? Plugin commands
 				// aren't truly the same as client input.
-				s.handleClientInput(&client.ClientInput{Text: input})
+				s.handleClientInput(&types.ConnectionInput{Text: input})
 			case output := <-s.pluginEngine.OutTextLineChan:
 				s.handlePluginOutput(output)
 			}
@@ -151,7 +137,7 @@ func (s *Session) Start() {
 	go func() {
 		for {
 			select {
-			case output := <-s.serverConnection.Output():
+			case output := <-s.proxyConnection.Output():
 				s.handleServerOutput(output)
 			}
 		}
@@ -165,7 +151,7 @@ func (s *Session) handlePluginCommand(command string) {
 	// Foward processed commands from the PluginEngine to the Server
 
 	s.log.Trace("[Session@%s]: Command Out (Server): '%s'", s.Name, strings.TrimSpace(command))
-	s.serverConnection.Input() <- command
+	s.proxyConnection.Input() <- command
 }
 
 func (s *Session) handlePluginOutput(output plugin.BufferOutput) {
@@ -183,7 +169,7 @@ func (s *Session) handleServerOutput(output string) {
 	s.pluginEngine.InTextLineChan <- output
 }
 
-func (s *Session) handleClientInput(input *client.ClientInput) {
+func (s *Session) handleClientInput(input *types.ConnectionInput) {
 	s.log.Trace("[Session@%s]: Command In (Client): '%s'", s.Name, strings.TrimSpace(input.Text))
 
 	// Check if input is a runes command, otherwise send to plugin engine
@@ -236,7 +222,7 @@ func (s *Session) buildCommandHandlers() map[string]Command {
 }
 
 // Handle built-in commands otherwise, return false
-func (s *Session) handleCommand(input *client.ClientInput) bool {
+func (s *Session) handleCommand(input *types.ConnectionInput) bool {
 	cmdPrefix := s.config.Core.CommandPrefix
 
 	// Command has configured prefix?

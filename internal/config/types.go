@@ -1,9 +1,9 @@
 package config
 
 type Config struct {
-	Client ClientConfig `koanf:"client"`
-	Core   CoreConfig   `koanf:"core"`
 	Server ServerConfig `koanf:"server"`
+	Core   CoreConfig   `koanf:"core"`
+	Proxy  ProxyConfig  `koanf:"proxy"`
 }
 
 type CoreConfig struct {
@@ -16,18 +16,18 @@ type CoreConfig struct {
 	DisablePluginsOnIdleWhitelist []string `koanf:"disablePluginsOnIdleWhitelist"`
 }
 
-type ClientConfig struct {
-	Telnet    *TelnetClientConfig    `koanf:"telnet"`
-	Websocket *WebsocketClientConfig `koanf:"websocket"`
+type ServerConfig struct {
+	Telnet    *TelnetServerConfig    `koanf:"telnet"`
+	Websocket *WebsocketServerConfig `koanf:"websocket"`
 }
 
-type TelnetClientConfig struct {
+type TelnetServerConfig struct {
 	Host string `koanf:"host"`
 	Port int    `koanf:"port"`
 }
 
-type WebsocketClientConfig struct {
+type WebsocketServerConfig struct {
 	Port int `koanf:"port"`
 }
 
-type ServerConfig struct{}
+type ProxyConfig struct{}

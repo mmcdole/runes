@@ -1,4 +1,4 @@
-package runes
+package mock
 
 import (
 	"fmt"
@@ -7,23 +7,23 @@ import (
 	"github.com/mmcdole/runes/internal/util"
 )
 
-// RunesServer is a mock server intended to respond to commands
+// DefaultServer is a mock server intended to respond to commands
 // while clients are attached to the default session.
-type RunesServer struct {
+type DefaultServer struct {
 	inputChan  chan string
 	outputChan chan string
 	logger     util.Logger
 }
 
-func NewRunesServer(logger util.Logger) *RunesServer {
-	return &RunesServer{
+func NewDefaultServer(logger util.Logger) *DefaultServer {
+	return &DefaultServer{
 		inputChan:  make(chan string),
 		outputChan: make(chan string),
 		logger:     logger,
 	}
 }
 
-func (ds *RunesServer) Connect() error {
+func (ds *DefaultServer) Connect() error {
 	go func() {
 		for {
 			select {
@@ -46,25 +46,25 @@ func (ds *RunesServer) Connect() error {
 	return nil
 }
 
-func (ds *RunesServer) Input() chan string {
+func (ds *DefaultServer) Input() chan string {
 	return ds.inputChan
 }
 
-func (ds *RunesServer) Output() chan string {
+func (ds *DefaultServer) Output() chan string {
 	return ds.outputChan
 }
 
-func (ds *RunesServer) Close() error {
+func (ds *DefaultServer) Close() error {
 	return nil
 }
 
-func (ds *RunesServer) handleCommand(input string) {
+func (ds *DefaultServer) handleCommand(input string) {
 	ds.logger.Trace("[DefaultServer]: Command In: '%s'", strings.TrimSpace(input))
 	// TODO: respond to different commands
 	ds.sendText(fmt.Sprintf("Command '%s' not found!\n", strings.TrimSpace(input)))
 }
 
-func (ds *RunesServer) sendText(text string) {
+func (ds *DefaultServer) sendText(text string) {
 	ds.logger.Trace("[DefaultServer]: Text Out: '%s'", strings.TrimSpace(text))
 
 	ds.outputChan <- text

@@ -23,8 +23,8 @@ func LoadOrCreateConfig() *Config {
 
 	// Set the defaults
 	k.Load(confmap.Provider(map[string]interface{}{
-		"client.telnet.port":                 "2000",
-		"client.telnet.host":                 "",
+		"server.telnet.port":                 "2000",
+		"server.telnet.host":                 "",
 		"core.commandPrefix":                 "!",
 		"core.commandSeparator":              ";",
 		"core.bufferSize":                    10000,
