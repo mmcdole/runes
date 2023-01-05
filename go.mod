@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/adrg/xdg v0.4.0
+	github.com/google/uuid v1.1.2
 	github.com/knadh/koanf v1.4.4
 )
 

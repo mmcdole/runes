@@ -8,6 +8,7 @@ type ClientInput struct {
 
 // ClientConnection to interact with a session
 type ClientConnection interface {
+	ID() string // UUID
 	Name() string
 	InputChan() chan ClientInput
 	SetInputChan(chan ClientInput)

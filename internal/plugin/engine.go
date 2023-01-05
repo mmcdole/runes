@@ -7,8 +7,8 @@ import (
 )
 
 type BufferOutput struct {
-	Line   string
-	Buffer string
+	Line       string
+	BufferName string
 }
 
 func NewPluginEngine(logger util.Logger) *PluginEngine {
@@ -47,7 +47,7 @@ type PluginEngine struct {
 }
 
 func (pe *PluginEngine) Start() {
-	pe.logger.Debug("PluginEngine: Started")
+	pe.logger.Debug("[PluginEngine]: Started")
 	for {
 		select {
 		case command := <-pe.InCommandChan:
@@ -60,15 +60,22 @@ func (pe *PluginEngine) Start() {
 
 func (pe *PluginEngine) handleCommand(command string) {
 	// TODO: process commands and check against alias list
-	pe.logger.Trace("PluginEngine: Processed Command: '%s'", strings.TrimSpace(command))
+	pe.logger.Trace("[PluginEngine]: Command In: '%s'", strings.TrimSpace(command))
+
+	// TODO: Process Commands/check for aliases
+
+	pe.logger.Trace("[PluginEngine]: Command Out: '%s'", strings.TrimSpace(command))
 
 	pe.OutCommandChan <- command
 }
 
 func (pe *PluginEngine) handleTextLine(line string) {
-	// TODO: process text line, check for actions/triggers/subs/highlights
-	pe.logger.Trace("PluginEngine: Processed Text: %s", line)
+	pe.logger.Trace("[PluginEngine]: Text In: %s", strings.TrimSpace(line))
 
-	// Don't specify buffer to make it "default"
+	// TODO: process text line, check for actions/triggers/subs/highlights
+
+	pe.logger.Trace("[PluginEngine]: Text Out: %s", strings.TrimSpace(line))
+
+	// Don't specify buffer to make it "primary"
 	pe.OutTextLineChan <- BufferOutput{Line: line}
 }

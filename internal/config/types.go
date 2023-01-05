@@ -7,6 +7,8 @@ type Config struct {
 }
 
 type CoreConfig struct {
+	BufferSize                    int      `koanf:"bufferSize"`
+	BufferReplaySize              int      `koanf:"bufferReplaySize"`
 	CommandPrefix                 string   `koanf:"commandPrefix"`
 	CommandSeparator              string   `koanf:"commandSeparator"`
 	IdleTime                      int      `koanf:"idleTime"`

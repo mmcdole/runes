@@ -2,6 +2,7 @@ package runes
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/mmcdole/runes/internal/util"
 )
@@ -11,12 +12,14 @@ import (
 type RunesServer struct {
 	inputChan  chan string
 	outputChan chan string
+	logger     util.Logger
 }
 
-func NewDefaultServer() *RunesServer {
+func NewRunesServer(logger util.Logger) *RunesServer {
 	return &RunesServer{
 		inputChan:  make(chan string),
 		outputChan: make(chan string),
+		logger:     logger,
 	}
 }
 
@@ -25,14 +28,19 @@ func (ds *RunesServer) Connect() error {
 		for {
 			select {
 			case input := <-ds.inputChan:
-				ds.handleInput(input)
+				ds.handleCommand(input)
 			}
 		}
 	}()
 
 	go func() {
-		ds.outputChan <- util.WelcomeBanner
-		ds.outputChan <- "Welcome to Runes default session!\n"
+		welcomeLines := strings.Split(util.WelcomeBanner, "\n")
+		for _, line := range welcomeLines {
+			ds.sendText(line + "\n")
+		}
+		ds.sendText("\n")
+
+		ds.sendText("Welcome to Runes default session!\n")
 	}()
 
 	return nil
@@ -50,7 +58,14 @@ func (ds *RunesServer) Close() error {
 	return nil
 }
 
-func (ds *RunesServer) handleInput(input string) {
+func (ds *RunesServer) handleCommand(input string) {
+	ds.logger.Trace("[DefaultServer]: Command In: '%s'", strings.TrimSpace(input))
 	// TODO: respond to different commands
-	ds.outputChan <- fmt.Sprintf("Command '%s' not found!\n", input)
+	ds.sendText(fmt.Sprintf("Command '%s' not found!\n", strings.TrimSpace(input)))
+}
+
+func (ds *RunesServer) sendText(text string) {
+	ds.logger.Trace("[DefaultServer]: Text Out: '%s'", strings.TrimSpace(text))
+
+	ds.outputChan <- text
 }

@@ -27,6 +27,8 @@ func LoadOrCreateConfig() *Config {
 		"client.telnet.host":                 "",
 		"core.commandPrefix":                 "!",
 		"core.commandSeparator":              ";",
+		"core.bufferSize":                    10000,
+		"core.bufferReplaySize":              100,
 		"core.idleTime":                      300,
 		"core.disablePluginsOnIdle":          true,
 		"core.disablePluginsOnIdleWhitelist": []string{},

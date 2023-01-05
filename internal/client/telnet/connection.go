@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/google/uuid"
 	"github.com/mmcdole/runes/internal/client"
 )
 
@@ -12,6 +13,7 @@ type TelnetConnection struct {
 	outputChan     chan string
 	disconnectChan chan bool
 	conn           net.Conn
+	id             string
 }
 
 func NewTelnetConnection(conn net.Conn) *TelnetConnection {
@@ -19,7 +21,12 @@ func NewTelnetConnection(conn net.Conn) *TelnetConnection {
 		outputChan:     make(chan string),
 		disconnectChan: make(chan bool),
 		conn:           conn,
+		id:             uuid.New().String(),
 	}
+}
+
+func (tc *TelnetConnection) ID() string {
+	return tc.id
 }
 
 func (tc *TelnetConnection) Name() string {

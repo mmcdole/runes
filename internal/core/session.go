@@ -26,7 +26,7 @@
 // 7. Session: Read from OutTextLineChan
 // 8. Session: Write the text line to the appropriate buffer/window
 // 9. Session: Send the text line to any ClientConnection OutputChan for the given buffer/window
-// 10 ClientConnection: Read from ClientConnection OutputChan and write to client net.conn
+// 10. ClientConnection: Read from ClientConnection OutputChan and write to client net.conn
 
 package core
 
@@ -35,54 +35,61 @@ import (
 	"strings"
 
 	"github.com/mmcdole/runes/internal/client"
+	"github.com/mmcdole/runes/internal/config"
 	"github.com/mmcdole/runes/internal/plugin"
 	"github.com/mmcdole/runes/internal/server"
 	"github.com/mmcdole/runes/internal/util"
 )
 
-func NewSession(logger util.Logger, name string, server server.ServerConnection, sm *SessionManager) *Session {
+func NewSession(logger util.Logger, conf *config.Config, name string, server server.ServerConnection, sm *SessionManager) *Session {
 	pe := plugin.NewPluginEngine(logger)
+	bm := NewBufferManager(conf.Core.BufferSize)
 
 	return &Session{
-		Name:           name,
-		server:         server,
-		sessionManager: sm,
-		pluginEngine:   pe,
-		inputChan:      make(chan client.ClientInput),
-		clients:        []client.ClientConnection{},
-		clientBuffers:  map[*client.ClientConnection]string{},
-		buffers:        map[string][]string{},
-		logger:         logger,
+		Name:              name,
+		config:            conf,
+		serverConnection:  server,
+		clientConnections: map[string]client.ClientConnection{},
+		sessionManager:    sm,
+		bufferManager:     bm,
+		pluginEngine:      pe,
+		inputChan:         make(chan client.ClientInput),
+		log:               logger,
 	}
 }
 
 type Session struct {
-	Name           string
-	inputChan      chan client.ClientInput
-	sessionManager *SessionManager
-	pluginEngine   *plugin.PluginEngine
-	server         server.ServerConnection
-	clients        []client.ClientConnection
-	clientBuffers  map[*client.ClientConnection]string
-	buffers        map[string][]string
-	logger         util.Logger
+	Name              string
+	config            *config.Config
+	inputChan         chan client.ClientInput
+	sessionManager    *SessionManager
+	bufferManager     *BufferManager
+	pluginEngine      *plugin.PluginEngine
+	serverConnection  server.ServerConnection
+	clientConnections map[string]client.ClientConnection
+	log               util.Logger
 }
 
 func (s *Session) AttachClient(client client.ClientConnection) {
-	s.logger.Debug("Session: '%s' Client: '%s':  Attached", s.Name, client.Name())
-	s.clients = append(s.clients, client)
+	s.log.Debug("[Session@%s]: Client: '%s' Attached", s.Name, client.Name())
+	s.clientConnections[client.ID()] = client
+
+	s.SwitchClientToBuffer(client, primaryBufferName)
+
 	client.SetInputChan(s.inputChan)
 }
 
 func (s *Session) DetachClient(client client.ClientConnection) {
-	s.logger.Debug("Session: '%s' Client: '%s': Detached", s.Name, client.Name())
+	s.log.Debug("[Session@%s]: Client: '%s' Detached", s.Name, client.Name())
 	// Remove the connection from the connections slice
-	for i, c := range s.clients {
-		if c == client {
-			s.clients = append(s.clients[:i], s.clients[i+1:]...)
-			break
-		}
-	}
+	delete(s.clientConnections, client.ID())
+	// for i, c := range s.clientConnections {
+	// 	if c == client {
+
+	// 		s.clientConnections = append(s.clientConnections[:i], s.clientConnections[i+1:]...)
+	// 		break
+	// 	}
+	// }
 	client.SetInputChan(nil)
 }
 
@@ -97,6 +104,17 @@ func (s *Session) SwitchToSession(client client.ClientConnection, sessionName st
 	}
 	session.AttachClient(client)
 	return session, nil
+}
+
+func (s *Session) SwitchClientToBuffer(client client.ClientConnection, bufferName string) {
+	// Assign this client to the provided buffer in manager
+	s.bufferManager.SwitchClientToBuffer(client.ID(), bufferName)
+
+	// Send a configured number of "replay history" history lines to the client
+	histLines := s.bufferManager.GetLastLines(bufferName, s.config.Core.BufferReplaySize)
+	for _, line := range histLines {
+		client.OutputChan() <- line
+	}
 }
 
 func (s *Session) Start() {
@@ -133,37 +151,54 @@ func (s *Session) Start() {
 	go func() {
 		for {
 			select {
-			case output := <-s.server.Output():
+			case output := <-s.serverConnection.Output():
 				s.handleServerOutput(output)
 			}
 		}
 	}()
 
-	s.logger.Debug("Session: Started '%s'", s.Name)
+	s.log.Debug("[Session@%s]: Started", s.Name)
 }
 
 func (s *Session) handlePluginCommand(command string) {
-	s.logger.Trace("Session: '%s': Plugin command: '%s'", s.Name, strings.TrimSpace(command))
+	s.log.Trace("[Session@%s]: Command In (Plugin): '%s'", s.Name, strings.TrimSpace(command))
 	// Foward processed commands from the PluginEngine to the Server
-	s.server.Input() <- command
+
+	s.log.Trace("[Session@%s]: Command Out (Server): '%s'", s.Name, strings.TrimSpace(command))
+	s.serverConnection.Input() <- command
 }
 
 func (s *Session) handlePluginOutput(output plugin.BufferOutput) {
-	s.logger.Trace("Session: '%s':  Plugin output: '%s'", s.Name, output)
-	// TODO: Write to buffer & send to clients with that buffer as active
+	s.log.Trace("[Session@%s]: Text In (Plugin): %s", s.Name, strings.TrimSpace(output.Line))
+
+	// Write new line(s) to the appropriate buffer
+	s.bufferManager.AppendLine(output.BufferName, output.Line)
+
+	// Output new line to any clients with this buffer assigned
+	clientIds := s.bufferManager.GetClientsForBuffer(output.BufferName)
+	for _, clientId := range clientIds {
+		if conn, ok := s.clientConnections[clientId]; ok {
+			conn.OutputChan() <- output.Line
+		}
+	}
+
+	s.log.Trace("[Session@%s]: Text Out (Client): %s", s.Name, strings.TrimSpace(output.Line))
 }
 
 func (s *Session) handleServerOutput(output string) {
-	s.logger.Trace("Session: '%s':  Server output: '%s'", s.Name, output)
+	s.log.Trace("[Session@%s]: Text In (Server): %s", s.Name, strings.TrimSpace(output))
 
+	s.log.Trace("[Session@%s]: Text Out (Plugin): %s", s.Name, strings.TrimSpace(output))
 	s.pluginEngine.InTextLineChan <- output
 }
 
 func (s *Session) handleClientInput(input string) {
-	s.logger.Trace("Session: '%s': Client input: '%s'", s.Name, strings.TrimSpace(input))
+	s.log.Trace("[Session@%s]: Command In (Client): '%s'", s.Name, strings.TrimSpace(input))
 
 	// Check if input is a runes command, otherwise send to plugin engine
 	if ok := s.handleCommand(input); !ok {
+
+		s.log.Trace("[Session@%s]: Command Out (Plugin): '%s'", s.Name, strings.TrimSpace(input))
 		s.pluginEngine.InCommandChan <- input
 	}
 }
@@ -171,4 +206,7 @@ func (s *Session) handleClientInput(input string) {
 func (s *Session) handleCommand(input string) bool {
 	// TODO: Implement mud client command handling
 	return false
+}
+
+func (s *Session) writeBuffer(output string, bufferName string) {
 }

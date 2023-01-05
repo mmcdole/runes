@@ -12,18 +12,12 @@ import (
 )
 
 var (
-	// Client Connection Sources
 	telnetServer    *telnet.TelnetServer
 	websocketServer *websocket.WebsocketServer
-	// Client Connection Events
-	connectionChan chan client.ClientConnection
-
-	sessionManager *core.SessionManager
-	logger         util.Logger
 )
 
 func main() {
-	logger = util.Logger{}
+	logger := util.Logger{}
 	logger.SetLogLevel(util.TraceLogLevel)
 
 	logger.Info("Runes Launched!")
@@ -31,38 +25,38 @@ func main() {
 	conf := config.LoadOrCreateConfig()
 
 	// Connection chan for when any client source start producing connections
-	connectionChan = make(chan client.ClientConnection)
+	onConnect := make(chan client.ClientConnection)
 
 	// Setup telnet client server if configured
 	if conf.Client.Telnet != nil {
-		setupTelnetServer(conf.Client.Telnet)
+		setupTelnetServer(logger, conf.Client.Telnet, onConnect)
 	}
 
 	// Setup websocket client server if configured
 	if conf.Client.Websocket != nil {
-		setupWebsocketServer(conf.Client.Websocket)
+		setupWebsocketServer(logger, conf.Client.Websocket, onConnect)
 	}
 
 	// Setup session manager, default session and start attaching clients
-	sessionManager = core.NewSessionManager(logger)
+	sessionManager := core.NewSessionManager(logger, conf)
 	sessionManager.Start()
 
-	// Receive client connections from servers and pass to session manager
+	// Receive client connections from server(s) and pass to session manager
 	for {
 		select {
-		case conn := <-connectionChan:
+		case conn := <-onConnect:
 			sessionManager.ConnectedChan() <- conn
 		}
 	}
 }
 
-func setupTelnetServer(conf *config.TelnetClientConfig) {
+func setupTelnetServer(logger util.Logger, conf *config.TelnetClientConfig, onConnect chan client.ClientConnection) {
 	address := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
-	telnetServer = telnet.NewTelnetServer(logger, address, connectionChan)
+	telnetServer = telnet.NewTelnetServer(logger, address, onConnect)
 	telnetServer.Run()
 }
 
-func setupWebsocketServer(conf *config.WebsocketClientConfig) {
+func setupWebsocketServer(logger util.Logger, conf *config.WebsocketClientConfig, onConnect chan client.ClientConnection) {
 	// TODO: Setup websocket client server
 	websocketServer = &websocket.WebsocketServer{}
 	websocketServer.Run()

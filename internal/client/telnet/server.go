@@ -29,7 +29,7 @@ func (ts *TelnetServer) Run() error {
 
 	go ts.acceptConnections(ln)
 
-	ts.logger.Debug("TelnetServer: Started @ '%s'", ts.Address)
+	ts.logger.Debug("[TelnetServer]: Started server at '%s'", ts.Address)
 	return nil
 }
 
@@ -42,7 +42,7 @@ func (ts *TelnetServer) acceptConnections(ln net.Listener) {
 			return
 		}
 
-		ts.logger.Debug("TelnetServer: Client Connected: '%s'", conn.RemoteAddr().String())
+		ts.logger.Debug("[TelnetServer]: Client Connected: '%s'", conn.RemoteAddr().String())
 
 		// Create telnet connection wrapper struct
 		tc := NewTelnetConnection(conn)
