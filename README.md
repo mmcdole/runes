@@ -1,6 +1,6 @@
 <div align="center"><p>
 
-![Qi1eNaEzlAE(2)](https://user-images.githubusercontent.com/3767096/210678412-4b594296-9916-4ab2-b17d-15cf33be881d.jpg)
+![Qi1eNaEzlAE(2) - Copy](https://user-images.githubusercontent.com/3767096/210681906-225555b4-c50d-4027-9143-a27f7af6ab05.jpg)
 
 
 <a href="https://github.com/mmcdole/runes/releases/latest">
@@ -17,4 +17,19 @@
 <br>
 <br>
 A proxy-based MUD client with advanced features and a modern Lua scripting engine.
+
+---
+
+**[<kbd> <br> Features <br> </kbd>][Features]** 
+**[<kbd> <br> Install <br> </kbd>][Install]** 
+**[<kbd> <br> Configure <br> </kbd>][Configure]** 
+**[<kbd> <br> Contribute <br> </kbd>][Contribute]**
+
+---
+
+[Features]: https://runes.com/features
+[Contribute]: https://github.com/mmcdole/runes/blob/master/CONTRIBUTING.md
+[Install]: https://runes.com/docs/installation
+[Configure]: https://runes.com/docs/configuration
+
 </div>
