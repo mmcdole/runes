@@ -1,32 +1,32 @@
 // End-to-end data flow(s)
 //
-// Input Steps: Client>Session>PluginEngine>Session>Server
+// Input Steps: Server>Session>PluginEngine>Session>Proxy
 
-// 1.  ClientConnection: Connnection Created
-// 4.  ClientConnection: Attached to a Session
-// 2.  ClientConnection: Reads input commands from net.conn (in Go-Routine)
-// 3.  ClientConnection: Writes these commands to its "InputChan"
-// 5.  Session: Reads from all ClientConnection "InputChan"s
+// 1.  Server Connection: Connnection Created
+// 4.  Server Connection: Attached to a Session
+// 2.  Server Connection: Reads input commands from net.conn (in Go-Routine)
+// 3.  Server Connection: Writes these commands to its "InputChan"
+// 5.  Session: Reads from all Server Connection "InputChan"s
 // 6.  Session: Sends input to Session's PluginEngine InCommandChan
 // 7.  PluginEngine: Read from InCommandChan
 // 8.  PluginEngine checks command against aliased lua commands
 //        8b. If command is not an alias, forward command to PluginEngine OutCommandChan
 //        8a. If command is an alias, execute aliased lua code
-// 9.  Session: Read from OutCommandChan and foward to ServerConnection InputChan
-// 10. ServerConnection: Read from ServerConnection InputChan and write to server net.conn
+// 9.  Session: Read from OutCommandChan and foward to Proxy Connection InputChan
+// 10. Proxy Connection: Read from ProxyConnection InputChan and write to server net.conn
 
-// Output Steps: Server>Session>PluginEngine>Session>Client
+// Output Steps: Proxy>Session>PluginEngine>Session>Server
 
-// 1. ServerConnection: Connection Created
-// 2. ServerConnection: Read from net.conn/whatever, send lines of output to OutputChan
-// 3. Session: Read from ServerConnection "OutputChan" and write to PluginEngine InTextLineChan
+// 1. Proxy Connection: Connection Created
+// 2. Proxy Connection: Read from net.conn/whatever, send lines of output to OutputChan
+// 3. Session: Read from Proxy Connection "OutputChan" and write to PluginEngine InTextLineChan
 // 4. PluginEngine: Read InTextLineChan for new text lines to process
 // 5. PluginEngine: Checks for Actions/Triggers/Subs/Highlights against the line of text
 // 6. PluginEngine: Send text line to OutTextLineChan, with a buffer set as "default"
 // 7. Session: Read from OutTextLineChan
 // 8. Session: Write the text line to the appropriate buffer/window
-// 9. Session: Send the text line to any ClientConnection OutputChan for the given buffer/window
-// 10. ClientConnection: Read from ClientConnection OutputChan and write to client net.conn
+// 9. Session: Send the text line to any Server Connection OutputChan for the given buffer/window
+// 10. Server Connection: Read from Server Connection OutputChan and write to client net.conn
 
 package core
 
@@ -104,7 +104,7 @@ func (s *Session) Start() {
 	// Start processing plugin input/output
 	go s.pluginEngine.Start()
 
-	// Handle input from ClientConnections
+	// Handle input from Clients
 	go func() {
 		for {
 			select {
@@ -133,12 +133,12 @@ func (s *Session) Start() {
 		}
 	}()
 
-	// Handle output from the ServerConnection
+	// Handle output from the ProxyConnection
 	go func() {
 		for {
 			select {
 			case output := <-s.proxyConnection.Output():
-				s.handleServerOutput(output)
+				s.handleProxyOutput(output)
 			}
 		}
 	}()
@@ -148,9 +148,10 @@ func (s *Session) Start() {
 
 func (s *Session) handlePluginCommand(command string) {
 	s.log.Trace("[Session@%s]: Command In (Plugin): '%s'", s.Name, strings.TrimSpace(command))
-	// Foward processed commands from the PluginEngine to the Server
 
-	s.log.Trace("[Session@%s]: Command Out (Server): '%s'", s.Name, strings.TrimSpace(command))
+	// Foward processed commands from the PluginEngine to the Proxy
+
+	s.log.Trace("[Session@%s]: Command Out (Proxy): '%s'", s.Name, strings.TrimSpace(command))
 	s.proxyConnection.Input() <- command
 }
 
@@ -162,8 +163,8 @@ func (s *Session) handlePluginOutput(output plugin.BufferOutput) {
 	s.log.Trace("[Session@%s]: Text Out (Client): %s", s.Name, strings.TrimSpace(output.Line))
 }
 
-func (s *Session) handleServerOutput(output string) {
-	s.log.Trace("[Session@%s]: Text In (Server): %s", s.Name, strings.TrimSpace(output))
+func (s *Session) handleProxyOutput(output string) {
+	s.log.Trace("[Session@%s]: Text In (Proxy): %s", s.Name, strings.TrimSpace(output))
 
 	s.log.Trace("[Session@%s]: Text Out (Plugin): %s", s.Name, strings.TrimSpace(output))
 	s.pluginEngine.InTextLineChan <- output
@@ -218,6 +219,7 @@ func (s *Session) buildCommandHandlers() map[string]Command {
 	return map[string]Command{
 		"session": &SessionCommand{},
 		"ping":    &PingCommand{},
+		"buffer":  &BufferCommand{},
 	}
 }
 
@@ -246,7 +248,7 @@ func (s *Session) handleCommand(input *types.ConnectionInput) bool {
 		Args:        args,
 		FullCommand: input.Text,
 		Session:     s,
-		Executor:    &input.Client,
+		Executor:    input.Client,
 	}
 
 	if handler, ok := s.commandHandlers[command]; ok {

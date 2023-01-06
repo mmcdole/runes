@@ -14,6 +14,6 @@ type CommandParams struct {
 	Command     string
 	Args        []string
 	Session     *Session
-	Executor    *types.Connection
+	Executor    types.Connection
 	FullCommand string
 }

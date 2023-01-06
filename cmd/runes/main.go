@@ -9,11 +9,6 @@ import (
 	"github.com/mmcdole/runes/internal/util"
 )
 
-var (
-// telnetServer    *telnet.TelnetServer
-// websocketServer *websocket.WebsocketServer
-)
-
 func main() {
 	logger := util.Logger{}
 	logger.SetLogLevel(util.TraceLogLevel)
@@ -37,15 +32,3 @@ func main() {
 		time.Sleep(time.Second)
 	}
 }
-
-// func setupTelnetServer(logger util.Logger, conf *config.TelnetClientConfig, onConnect chan types.Connection) {
-// 	address := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
-// 	telnetServer = telnet.NewTelnetServer(logger, address, onConnect)
-// 	telnetServer.Run()
-// }
-
-// func setupWebsocketServer(logger util.Logger, conf *config.WebsocketClientConfig, onConnect chan types.Connection) {
-// 	// TODO: Setup websocket client server
-// 	websocketServer = &websocket.WebsocketServer{}
-// 	websocketServer.Run()
-// }

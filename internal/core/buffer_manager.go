@@ -47,7 +47,15 @@ func (bm *BufferManager) CreateBuffer(bufferName string) {
 	bm.bufferLines[bufferName] = []string{}
 }
 
-func (bm *BufferManager) GetAssignedBufferForClient(clientID string) string {
+func (bm *BufferManager) GetBuffers() []string {
+	buffers := []string{}
+	for bufferName := range bm.bufferLines {
+		buffers = append(buffers, bufferName)
+	}
+	return buffers
+}
+
+func (bm *BufferManager) GetBufferForClient(clientID string) string {
 	return bm.clientBufferMap[clientID]
 }
 
