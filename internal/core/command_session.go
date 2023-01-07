@@ -32,13 +32,13 @@ func (c *SessionCommand) Execute(params *CommandParams) bool {
 
 // Handle "session list"
 func (s *SessionCommand) handleSessionListCommand(params *CommandParams) bool {
-	params.Session.writeText("Sessions: ")
+	params.Session.writeClientText(params.Executor, "Sessions: ")
 	sessions := params.Session.sessionManager.GetSessions()
 	for _, session := range sessions {
 		if session == params.Session {
-			params.Session.writeText(fmt.Sprintf("  [*] %s", session.Name))
+			params.Session.writeClientText(params.Executor, fmt.Sprintf("  [*] %s", session.Name))
 		} else {
-			params.Session.writeText(fmt.Sprintf("  [ ] %s", session.Name))
+			params.Session.writeClientText(params.Executor, fmt.Sprintf("  [ ] %s", session.Name))
 		}
 	}
 	return true

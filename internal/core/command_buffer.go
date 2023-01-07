@@ -12,12 +12,12 @@ func (c *BufferCommand) handleBufferListCommand(params *CommandParams) bool {
 	activeBuffer := params.Session.bufferManager.GetBufferForClient(params.Executor.ID())
 	buffers := params.Session.bufferManager.GetBuffers()
 
-	params.Session.writeText("Buffers: ")
+	params.Session.writeClientText(params.Executor, "Buffers: ")
 	for _, buffer := range buffers {
 		if buffer == activeBuffer {
-			params.Session.writeText(fmt.Sprintf("  [*] %s", buffer))
+			params.Session.writeClientText(params.Executor, fmt.Sprintf("  [*] %s", buffer))
 		} else {
-			params.Session.writeText(fmt.Sprintf("  [ ] %s", buffer))
+			params.Session.writeClientText(params.Executor, fmt.Sprintf("  [ ] %s", buffer))
 		}
 	}
 	return true

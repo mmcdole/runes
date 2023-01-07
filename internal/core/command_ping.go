@@ -3,7 +3,7 @@ package core
 type PingCommand struct{}
 
 func (c *PingCommand) Execute(params *CommandParams) bool {
-	params.Session.writeText("Pong!")
+	params.Session.writeClientText(params.Executor, "Pong!")
 	return true
 }
 

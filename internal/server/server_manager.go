@@ -20,10 +20,11 @@ func NewServerManager(log util.Logger, config *config.Config, connected chan typ
 }
 
 type ServerManager struct {
-	config          *config.Config
-	log             util.Logger
-	connected       chan types.Connection
-	disconnected    chan types.Connection
+	config       *config.Config
+	log          util.Logger
+	connected    chan types.Connection
+	disconnected chan types.Connection
+
 	telnetServer    *telnet.TelnetServer
 	websocketServer *websocket.WebsocketServer
 }
@@ -44,17 +45,3 @@ func (sm *ServerManager) Start() {
 		sm.websocketServer.Run()
 	}
 }
-
-// func (sm *ServerManager) {
-
-// }
-
-// func (sm *SessionManager) setupTelnetServer() {
-// 	address := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
-// 	telnetServer = telnet.NewTelnetServer(logger, address, onConnect)
-// 	telnetServer.Run()
-// }
-
-// func (sm *SessionManager) setupWebsocketServer() {
-// 	// TODO: Setup websocket client server
-// }

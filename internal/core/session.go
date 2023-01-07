@@ -1,11 +1,11 @@
 // End-to-end data flow(s)
 //
 // Input Steps: Server>Client>Session>PluginEngine>Session>Proxy
-
+//
 // 1.  Server: Client Connnection Created
-// 4.  Client: Attached to a Session
-// 2.  Client: Reads input commands from net.conn (in Go-Routine)
-// 3.  Client: Writes these commands to its "InputChan"
+// 2.  Client: Attached to a Session
+// 3.  Client: Reads input commands from net.conn (in Go-Routine)
+// 4.  Client: Writes these commands to its "InputChan"
 // 5.  Session: Reads from all Client Connection InputChan's
 // 6.  Session: Sends input to PluginEngine InCommandChan
 // 7.  PluginEngine: Read from InCommandChan
@@ -14,18 +14,18 @@
 //        8a. If command is an alias, execute aliased lua code
 // 9.  Session: Read from OutCommandChan and foward to Proxy InputChan
 // 10. Proxy: Read from Proxy InputChan and write to net.conn
-
+//
 // Output Steps: Proxy>Session>PluginEngine>Session>Server
-
-// 1. Proxy: Connection Created
-// 2. Proxy: Read from net.conn, send lines of output to Proxy OutputChan
-// 3. Session: Read from Proxy "OutputChan" and write to PluginEngine InTextLineChan
-// 4. PluginEngine: Read InTextLineChan for new text lines to process
-// 5. PluginEngine: Checks for Actions/Triggers/Subs/Highlights against the line of text
-// 6. PluginEngine: Send text line to OutTextLineChan, with a buffer set as "default"
-// 7. Session: Read from Plugin OutTextLineChan
-// 8. Session: Write the text line to the appropriate buffer/window
-// 9. Session: Send the text line to any Client's OutputChan for the given buffer/window
+//
+// 1.  Proxy: Connection Created
+// 2.  Proxy: Read from net.conn, send lines of output to Proxy OutputChan
+// 3.  Session: Read from Proxy "OutputChan" and write to PluginEngine InTextLineChan
+// 4.  PluginEngine: Read InTextLineChan for new text lines to process
+// 5.  PluginEngine: Checks for Actions/Triggers/Subs/Highlights against the line of text
+// 6.  PluginEngine: Send text line to OutTextLineChan, with a buffer set as "default"
+// 7.  Session: Read from Plugin OutTextLineChan
+// 8.  Session: Write the text line to the appropriate buffer/window
+// 9.  Session: Send the text line to any Client's OutputChan for the given buffer/window
 // 10. Client: Read from Client Connection's OutputChan and write to client net.conn
 
 package core
@@ -181,14 +181,15 @@ func (s *Session) handleClientInput(input *types.ConnectionInput) {
 	}
 }
 
-// Write text to the primary buffer and output to any assigned clients.
-func (s *Session) writeText(text string) {
-	s.writeBufferText("", text)
+func (s *Session) writeClientText(client types.Connection, text string) {
+	lines := strings.Split(text, "\n")
+	for _, line := range lines {
+		s.writeClientLine(client, line+"\n")
+	}
 }
 
-// Write a line to the primary buffer and output to any assigned clients.
-func (s *Session) writeLine(line string) {
-	s.writeBufferLine("", line)
+func (s *Session) writeClientLine(client types.Connection, line string) {
+	client.OutputChan() <- line
 }
 
 // Write text which may contain multiple lines to the named buffer
@@ -212,14 +213,6 @@ func (s *Session) writeBufferLine(bufferName string, line string) {
 		if conn, ok := s.clientConnections[clientId]; ok {
 			conn.OutputChan() <- line
 		}
-	}
-}
-
-func (s *Session) buildCommandHandlers() map[string]Command {
-	return map[string]Command{
-		"session": &SessionCommand{},
-		"ping":    &PingCommand{},
-		"buffer":  &BufferCommand{},
 	}
 }
 
@@ -256,4 +249,12 @@ func (s *Session) handleCommand(input *types.ConnectionInput) bool {
 	}
 
 	return false
+}
+
+func (s *Session) buildCommandHandlers() map[string]Command {
+	return map[string]Command{
+		"session": &SessionCommand{},
+		"ping":    &PingCommand{},
+		"buffer":  &BufferCommand{},
+	}
 }
