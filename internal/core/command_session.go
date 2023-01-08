@@ -1,21 +1,26 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/mmcdole/runes/internal/proxy/telnet"
+)
 
 type SessionCommand struct{}
 
 // Handle "session" command
 // session list - Show info about availble sessions
-// session create vk telnet vikingmud.org 2001 - Create telnet session
-// session create vk shell <command> - Create shell session
-// session kill vk - Kill session
-// session switch vk - Switch to existing session
+// session create <name> telnet vikingmud.org 2001 - Create telnet session
+// session create <name> shell <command> - Create shell session
+// session kill <name> - Kill session
+// session switch <name> - Switch to existing session
 func (c *SessionCommand) Execute(params *CommandParams) bool {
 	if len(params.Args) == 0 {
 		return c.handleSessionListCommand(params)
 	}
 
-	action := params.Args[0]
+	action := strings.ToLower(params.Args[0])
 	switch action {
 	case "list":
 		return c.handleSessionListCommand(params)
@@ -44,12 +49,42 @@ func (s *SessionCommand) handleSessionListCommand(params *CommandParams) bool {
 	return true
 }
 
-// Handle "!session create <name> <type> <arg1> <arg2>" command
+// Handle "session create <name> telnet <host> <port>" command
+// Handle "session create <name> shell <command> <arg1> <arg2>"
 func (s *SessionCommand) handleSessionCreateCommand(params *CommandParams) bool {
-	return true
+	if len(params.Args) < 4 {
+		return false
+	}
+
+	sessionType := strings.ToLower(params.Args[2])
+	switch sessionType {
+	case "telnet":
+		return s.handleSessionCreateTelnetCommand(params)
+	case "shell":
+		return s.handleSessionCreateShellCommand(params)
+	default:
+		return false
+	}
 }
 
+// Handle "session create <name> telnet <host> <port>" command
 func (s *SessionCommand) handleSessionCreateTelnetCommand(params *CommandParams) bool {
+	if len(params.Args) < 5 {
+		return false
+	}
+
+	sessionName := params.Args[1]
+	telnetHost := params.Args[3]
+	telnetPort := params.Args[4]
+
+	// TODO: Validate telnet parameters/args
+
+	telnetProxy := telnet.NewTelnetProxy(&params.Session.log, telnetHost, telnetPort)
+	session := params.Session.sessionManager.CreateSession(sessionName, telnetProxy)
+	session.Start()
+	telnetProxy.Connect()
+	params.Session.sessionManager.AttachClientSession(params.Executor, sessionName)
+
 	return true
 }
 
@@ -65,6 +100,19 @@ func (s *SessionCommand) handleSessionKillCommand(params *CommandParams) bool {
 
 // Handle "!session switch <name>" command
 func (s *SessionCommand) handleSessionSwitchCommand(params *CommandParams) bool {
+	if len(params.Args) < 2 {
+		return false
+	}
+
+	sessionName := strings.ToLower(params.Args[1])
+	if params.Session.Name == sessionName {
+		params.Session.writeClientText(params.Executor, fmt.Sprintf("Session '%s' already active!", params.Session.Name))
+		return true
+	}
+
+	params.Session.writeClientText(params.Executor, fmt.Sprintf("Switching to '%s' session.", sessionName))
+	params.Session.sessionManager.AttachClientSession(params.Executor, sessionName)
+
 	return true
 }
 

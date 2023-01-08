@@ -31,6 +31,7 @@
 package core
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/mmcdole/runes/internal/config"
@@ -189,7 +190,7 @@ func (s *Session) writeClientText(client types.Connection, text string) {
 }
 
 func (s *Session) writeClientLine(client types.Connection, line string) {
-	client.OutputChan() <- line
+	client.OutputChan() <- fmt.Sprintf("[r] %s", line)
 }
 
 // Write text which may contain multiple lines to the named buffer
