@@ -7,6 +7,7 @@ type Config struct {
 }
 
 type CoreConfig struct {
+	EnableColors                  bool     `koanf:"enableColors"`
 	BufferSize                    int      `koanf:"bufferSize"`
 	BufferReplaySize              int      `koanf:"bufferReplaySize"`
 	CommandPrefix                 string   `koanf:"commandPrefix"`

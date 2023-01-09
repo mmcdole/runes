@@ -1,9 +1,12 @@
 package core
 
+import "sync"
+
 const primaryBufferName = "primary"
 
 type BufferManager struct {
-	bufferLines       map[string][]string
+	bufferMus         map[string]*sync.Mutex
+	buffers           map[string][]string
 	clientBufferMap   map[string]string
 	bufferClientsMap  map[string][]string
 	maxLinesPerBuffer int
@@ -11,7 +14,8 @@ type BufferManager struct {
 
 func NewBufferManager(maxLinesPerBuffer int) *BufferManager {
 	return &BufferManager{
-		bufferLines:       map[string][]string{},
+		buffers:           map[string][]string{},
+		bufferMus:         map[string]*sync.Mutex{},
 		clientBufferMap:   map[string]string{},
 		bufferClientsMap:  map[string][]string{},
 		maxLinesPerBuffer: maxLinesPerBuffer,
@@ -21,35 +25,42 @@ func NewBufferManager(maxLinesPerBuffer int) *BufferManager {
 func (bm *BufferManager) AppendLine(bufferName string, line string) {
 	bufferName = bm.primaryOrBufferName(bufferName)
 
-	if _, ok := bm.bufferLines[bufferName]; !ok {
+	// Buffer doesn't exist, create it
+	if _, ok := bm.buffers[bufferName]; !ok {
 		bm.CreateBuffer(bufferName)
 	}
-	bm.bufferLines[bufferName] = append(bm.bufferLines[bufferName], line)
-	if len(bm.bufferLines[bufferName]) > bm.maxLinesPerBuffer {
-		bm.bufferLines[bufferName] = bm.bufferLines[bufferName][len(bm.bufferLines[bufferName])-bm.maxLinesPerBuffer:]
+	bm.bufferMus[bufferName].Lock()
+	bm.buffers[bufferName] = append(bm.buffers[bufferName], line)
+	if len(bm.buffers[bufferName]) > bm.maxLinesPerBuffer {
+		bm.buffers[bufferName] = bm.buffers[bufferName][len(bm.buffers[bufferName])-bm.maxLinesPerBuffer:]
 	}
+	bm.bufferMus[bufferName].Unlock()
 }
 
 func (bm *BufferManager) AppendLines(bufferName string, lines []string) {
 	bufferName = bm.primaryOrBufferName(bufferName)
 
-	if _, ok := bm.bufferLines[bufferName]; !ok {
+	// Buffer doesn't exist, create it
+	if _, ok := bm.buffers[bufferName]; !ok {
 		bm.CreateBuffer(bufferName)
 	}
-	bm.bufferLines[bufferName] = append(bm.bufferLines[bufferName], lines...)
-	if len(bm.bufferLines[bufferName]) > bm.maxLinesPerBuffer {
-		bm.bufferLines[bufferName] = bm.bufferLines[bufferName][len(bm.bufferLines[bufferName])-bm.maxLinesPerBuffer:]
+	bm.bufferMus[bufferName].Lock()
+	bm.buffers[bufferName] = append(bm.buffers[bufferName], lines...)
+	if len(bm.buffers[bufferName]) > bm.maxLinesPerBuffer {
+		bm.buffers[bufferName] = bm.buffers[bufferName][len(bm.buffers[bufferName])-bm.maxLinesPerBuffer:]
 	}
+	bm.bufferMus[bufferName].Unlock()
 }
 
 func (bm *BufferManager) CreateBuffer(bufferName string) {
 	bufferName = bm.primaryOrBufferName(bufferName)
-	bm.bufferLines[bufferName] = []string{}
+	bm.buffers[bufferName] = []string{}
+	bm.bufferMus[bufferName] = &sync.Mutex{}
 }
 
 func (bm *BufferManager) GetBuffers() []string {
 	buffers := []string{}
-	for bufferName := range bm.bufferLines {
+	for bufferName := range bm.buffers {
 		buffers = append(buffers, bufferName)
 	}
 	return buffers
@@ -76,10 +87,19 @@ func (bm *BufferManager) SetMaxLinesPerBuffer(maxLines int) {
 
 func (bm *BufferManager) GetLastLines(bufferName string, numLines int) []string {
 	bufferName = bm.primaryOrBufferName(bufferName)
-	if numLines > len(bm.bufferLines[bufferName]) {
-		numLines = len(bm.bufferLines[bufferName])
+
+	// Buffer doesn't exist, return empty array
+	if _, ok := bm.buffers[bufferName]; !ok {
+		return []string{}
 	}
-	return bm.bufferLines[bufferName][len(bm.bufferLines[bufferName])-numLines:]
+
+	bm.bufferMus[bufferName].Lock()
+	if numLines > len(bm.buffers[bufferName]) {
+		numLines = len(bm.buffers[bufferName])
+	}
+	lines := bm.buffers[bufferName][len(bm.buffers[bufferName])-numLines:]
+	bm.bufferMus[bufferName].Unlock()
+	return lines
 }
 
 func (bm *BufferManager) assignClientToBuffer(clientID string, bufferName string) {

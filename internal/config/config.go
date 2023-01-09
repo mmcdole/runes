@@ -25,6 +25,7 @@ func LoadOrCreateConfig() *Config {
 	k.Load(confmap.Provider(map[string]interface{}{
 		"server.telnet.port":                 "2000",
 		"server.telnet.host":                 "",
+		"core.enableColors":                  true,
 		"core.commandPrefix":                 "!",
 		"core.commandSeparator":              ";",
 		"core.bufferSize":                    10000,

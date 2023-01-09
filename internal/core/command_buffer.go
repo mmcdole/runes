@@ -1,6 +1,10 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/fatih/color"
+)
 
 type BufferCommand struct{}
 
@@ -12,12 +16,12 @@ func (c *BufferCommand) handleBufferListCommand(params *CommandParams) bool {
 	activeBuffer := params.Session.bufferManager.GetBufferForClient(params.Executor.ID())
 	buffers := params.Session.bufferManager.GetBuffers()
 
-	params.Session.writeClientText(params.Executor, "Buffers: ")
+	params.writeToExecutor("Buffers: ")
 	for _, buffer := range buffers {
 		if buffer == activeBuffer {
-			params.Session.writeClientText(params.Executor, fmt.Sprintf("  [*] %s", buffer))
+			params.writeToExecutor(fmt.Sprintf(" [%s] %s", color.HiGreenString("*"), buffer))
 		} else {
-			params.Session.writeClientText(params.Executor, fmt.Sprintf("  [ ] %s", buffer))
+			params.writeToExecutor(fmt.Sprintf(" [ ] %s", buffer))
 		}
 	}
 	return true

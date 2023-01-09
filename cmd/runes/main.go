@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/mmcdole/runes/internal/config"
 	"github.com/mmcdole/runes/internal/core"
 	"github.com/mmcdole/runes/internal/server"
@@ -15,6 +16,7 @@ func main() {
 	logger.Info("Runes Launched!")
 
 	conf := config.LoadOrCreateConfig()
+	color.NoColor = !conf.Core.EnableColors
 
 	// SessionManager owns all Rune's game sessions and facilitates Connection's to a Session
 	sessionManager := core.NewSessionManager(logger, conf)

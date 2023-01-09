@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/mmcdole/runes/internal/proxy/telnet"
 )
 
@@ -30,6 +31,8 @@ func (c *SessionCommand) Execute(params *CommandParams) bool {
 		return c.handleSessionKillCommand(params)
 	case "switch":
 		return c.handleSessionSwitchCommand(params)
+	case "connect":
+		return c.handleSessionConnectCommand(params)
 	default:
 		return false
 	}
@@ -37,13 +40,13 @@ func (c *SessionCommand) Execute(params *CommandParams) bool {
 
 // Handle "session list"
 func (s *SessionCommand) handleSessionListCommand(params *CommandParams) bool {
-	params.Session.writeClientText(params.Executor, "Sessions: ")
+	params.writeToExecutor("Sessions:\n")
 	sessions := params.Session.sessionManager.GetSessions()
 	for _, session := range sessions {
 		if session == params.Session {
-			params.Session.writeClientText(params.Executor, fmt.Sprintf("  [*] %s", session.Name))
+			params.writeToExecutor(fmt.Sprintf(" [%s] %s\n", color.HiGreenString("*"), session.Name))
 		} else {
-			params.Session.writeClientText(params.Executor, fmt.Sprintf("  [ ] %s", session.Name))
+			params.writeToExecutor(fmt.Sprintf(" [ ] %s\n", session.Name))
 		}
 	}
 	return true
@@ -81,9 +84,16 @@ func (s *SessionCommand) handleSessionCreateTelnetCommand(params *CommandParams)
 
 	telnetProxy := telnet.NewTelnetProxy(&params.Session.log, telnetHost, telnetPort)
 	session := params.Session.sessionManager.CreateSession(sessionName, telnetProxy)
-	session.Start()
-	telnetProxy.Connect()
 	params.Session.sessionManager.AttachClientSession(params.Executor, sessionName)
+	params.writeToExecutor(fmt.Sprintf("Attached to session: %s\n", sessionName))
+
+	session.Start()
+	params.writeToExecutor(fmt.Sprintf("Connecting to '%s:%s'...\n", telnetHost, telnetPort))
+	if err := telnetProxy.Connect(); err != nil {
+		params.writeToExecutor("Connection failed!\n")
+	} else {
+		params.writeToExecutor("Connected successfully!\n")
+	}
 
 	return true
 }
@@ -106,13 +116,24 @@ func (s *SessionCommand) handleSessionSwitchCommand(params *CommandParams) bool 
 
 	sessionName := strings.ToLower(params.Args[1])
 	if params.Session.Name == sessionName {
-		params.Session.writeClientText(params.Executor, fmt.Sprintf("Session '%s' already active!", params.Session.Name))
+		params.writeToExecutor(fmt.Sprintf("Session '%s' already active!\n", params.Session.Name))
 		return true
 	}
 
-	params.Session.writeClientText(params.Executor, fmt.Sprintf("Switching to '%s' session.", sessionName))
+	params.writeToExecutor(fmt.Sprintf("Switching to '%s' session.\n", sessionName))
 	params.Session.sessionManager.AttachClientSession(params.Executor, sessionName)
 
+	return true
+}
+
+func (s *SessionCommand) handleSessionConnectCommand(params *CommandParams) bool {
+	params.writeToExecutor("Reconnecting...\n")
+	err := params.Session.proxyConnection.Connect()
+	if err != nil {
+		params.writeToExecutor("Connection failed!\n")
+	} else {
+		params.writeToExecutor("Connected successfully!\n")
+	}
 	return true
 }
 

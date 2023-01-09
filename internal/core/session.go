@@ -39,6 +39,8 @@ import (
 	"github.com/mmcdole/runes/internal/proxy"
 	"github.com/mmcdole/runes/internal/types"
 	"github.com/mmcdole/runes/internal/util"
+
+	"github.com/fatih/color"
 )
 
 func NewSession(logger util.Logger, conf *config.Config, name string, proxy proxy.ProxyConnection, sm *SessionManager) *Session {
@@ -175,7 +177,11 @@ func (s *Session) handleClientInput(input *types.ConnectionInput) {
 	s.log.Trace("[Session@%s]: Command In (Client): '%s'", s.Name, strings.TrimSpace(input.Text))
 
 	// Check if input is a runes command, otherwise send to plugin engine
+	// TODO: look into output from handleCommand
 	if ok := s.handleCommand(input); !ok {
+		// Write the user-command to primary buffer?
+		// TODO: investigate proper behavior
+		// s.writeBufferLine("", input.Text)
 
 		s.log.Trace("[Session@%s]: Command Out (Plugin): '%s'", s.Name, strings.TrimSpace(input.Text))
 		s.pluginEngine.InCommandChan <- input.Text
@@ -190,7 +196,10 @@ func (s *Session) writeClientText(client types.Connection, text string) {
 }
 
 func (s *Session) writeClientLine(client types.Connection, line string) {
-	client.OutputChan() <- fmt.Sprintf("[r] %s", line)
+	white := color.New(color.FgWhite, color.Bold).SprintFunc()
+	green := color.New(color.FgHiGreen, color.Bold).SprintFunc()
+	text := fmt.Sprintf("%s%s%s %s", white("["), green("r"), white("]"), line)
+	client.OutputChan() <- text
 }
 
 // Write text which may contain multiple lines to the named buffer

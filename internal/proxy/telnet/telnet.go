@@ -34,13 +34,15 @@ type TelnetProxy struct {
 }
 
 func (p *TelnetProxy) Connect() error {
+	if p.conn != nil {
+		p.conn.Close()
+	}
+
 	address := fmt.Sprintf("%s:%s", p.host, p.port)
-	p.outputChan <- fmt.Sprintf("[runes] Connecting to '%s'...\n", address)
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		return err
 	}
-	p.outputChan <- "[runes] Connected Successfully!\n"
 	p.conn = conn
 	// p.ConnectChan <- true
 
