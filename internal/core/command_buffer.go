@@ -16,12 +16,12 @@ func (c *BufferCommand) handleBufferListCommand(params *CommandParams) bool {
 	activeBuffer := params.Session.bufferManager.GetBufferForClient(params.Executor.ID())
 	buffers := params.Session.bufferManager.GetBuffers()
 
-	params.writeToExecutor("Buffers: ")
+	params.writeToExecutor("Buffers:\n")
 	for _, buffer := range buffers {
 		if buffer == activeBuffer {
-			params.writeToExecutor(fmt.Sprintf(" [%s] %s", color.HiGreenString("*"), buffer))
+			params.writeToExecutor(fmt.Sprintf(" [%s] %s\n", color.HiGreenString("*"), buffer))
 		} else {
-			params.writeToExecutor(fmt.Sprintf(" [ ] %s", buffer))
+			params.writeToExecutor(fmt.Sprintf(" [ ] %s\n", buffer))
 		}
 	}
 	return true
