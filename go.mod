@@ -4,12 +4,13 @@ go 1.19
 
 require (
 	github.com/adrg/xdg v0.4.0
+	github.com/fatih/color v1.13.0
 	github.com/google/uuid v1.1.2
 	github.com/knadh/koanf v1.4.4
+	github.com/yuin/gopher-lua v1.0.0
 )
 
 require (
-	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/mattn/go-colorable v0.1.9 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect

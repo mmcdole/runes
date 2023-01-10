@@ -48,6 +48,7 @@ type PluginEngine struct {
 
 func (pe *PluginEngine) Start() {
 	pe.logger.Debug("[PluginEngine]: Started")
+
 	for {
 		select {
 		case command := <-pe.InCommandChan:

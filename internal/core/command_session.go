@@ -105,6 +105,7 @@ func (s *SessionCommand) handleSessionCreateShellCommand(params *CommandParams) 
 
 // Handle "!session kill <name>" command
 func (s *SessionCommand) handleSessionKillCommand(params *CommandParams) bool {
+	// TODO: Implement session kill command
 	return true
 }
 
@@ -138,9 +139,11 @@ func (s *SessionCommand) handleSessionConnectCommand(params *CommandParams) bool
 }
 
 func (c *SessionCommand) Usage() string {
+	// TODO: Session Usage
 	return "Session Usage!"
 }
 
 func (c *SessionCommand) Help() string {
+	// TODO: Session Help
 	return "Session Help!"
 }
