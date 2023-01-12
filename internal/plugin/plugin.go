@@ -74,5 +74,13 @@ func (p *Plugin) registerAction(state *lua.LState) int {
 }
 
 func (p *Plugin) registerAlias(state *lua.LState) int {
+	// get the alias name
+	name := state.ToString(1)
+	// get the function
+	fn := state.ToFunction(2)
+
+	// register the alias
+	p.Aliases[name] = fn
+
 	return 1
 }

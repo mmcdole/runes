@@ -7,23 +7,23 @@ import (
 	"github.com/mmcdole/runes/internal/util"
 )
 
-// DefaultServer is a mock server intended to respond to commands
+// DefaultProxy is a mock server intended to respond to commands
 // while clients are attached to the default session.
-type DefaultServer struct {
+type DefaultProxy struct {
 	inputChan  chan string
 	outputChan chan string
 	logger     util.Logger
 }
 
-func NewDefaultServer(logger util.Logger) *DefaultServer {
-	return &DefaultServer{
+func NewDefaultProxy(logger util.Logger) *DefaultProxy {
+	return &DefaultProxy{
 		inputChan:  make(chan string),
 		outputChan: make(chan string),
 		logger:     logger,
 	}
 }
 
-func (ds *DefaultServer) Connect() error {
+func (ds *DefaultProxy) Connect() error {
 	go func() {
 		for {
 			select {
@@ -46,26 +46,26 @@ func (ds *DefaultServer) Connect() error {
 	return nil
 }
 
-func (ds *DefaultServer) Input() chan string {
+func (ds *DefaultProxy) Input() chan string {
 	return ds.inputChan
 }
 
-func (ds *DefaultServer) Output() chan string {
+func (ds *DefaultProxy) Output() chan string {
 	return ds.outputChan
 }
 
-func (ds *DefaultServer) Close() error {
+func (ds *DefaultProxy) Close() error {
 	return nil
 }
 
-func (ds *DefaultServer) handleCommand(input string) {
-	ds.logger.Trace("[DefaultServer]: Command In: '%s'", strings.TrimSpace(input))
+func (ds *DefaultProxy) handleCommand(input string) {
+	ds.logger.Trace("[DefaultProxy]: Command In: %s", strings.TrimSpace(input))
 	// TODO: respond to different commands
 	ds.sendText(fmt.Sprintf("Command '%s' not found!\n", strings.TrimSpace(input)))
 }
 
-func (ds *DefaultServer) sendText(text string) {
-	ds.logger.Trace("[DefaultServer]: Text Out: '%s'", strings.TrimSpace(text))
+func (ds *DefaultProxy) sendText(text string) {
+	ds.logger.Trace("[DefaultProxy]: Text Out: %s", strings.TrimSpace(text))
 
 	ds.outputChan <- text
 }

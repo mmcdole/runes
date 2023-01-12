@@ -18,6 +18,7 @@ func NewPluginEngine(logger util.Logger) *PluginEngine {
 		OutSendChan:     make(chan string),
 		OutCommandChan:  make(chan string),
 		OutTextLineChan: make(chan BufferOutput),
+		plugins:         []Plugin{},
 		logger:          logger,
 	}
 }
@@ -43,7 +44,8 @@ type PluginEngine struct {
 	// Note: forward text lines and plugin output to the client buffers
 	OutTextLineChan chan BufferOutput
 
-	logger util.Logger
+	plugins []Plugin
+	logger  util.Logger
 }
 
 func (pe *PluginEngine) Start() {
@@ -64,6 +66,12 @@ func (pe *PluginEngine) handleCommand(command string) {
 	pe.logger.Trace("[PluginEngine]: Command In: '%s'", strings.TrimSpace(command))
 
 	// TODO: Process Commands/check for aliases
+
+	// cmd := strings.TrimSpace(command)
+
+	// for _, plugin := range pe.plugins {
+	//    if plugin.Aliases[cmd]
+	// }
 
 	pe.logger.Trace("[PluginEngine]: Command Out: '%s'", strings.TrimSpace(command))
 

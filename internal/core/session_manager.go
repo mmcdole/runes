@@ -97,7 +97,13 @@ func (sm *SessionManager) CreateSession(name string, server proxy.ProxyConnectio
 		return nil
 	}
 
-	session := NewSession(sm.logger, sm.config, name, server, sm)
+	// Create new logger with Session prefix
+	logger := util.Logger{
+		LogLevel: sm.logger.LogLevel,
+		Prefix:   "@" + name,
+	}
+
+	session := NewSession(logger, sm.config, name, server, sm)
 
 	sm.sessionsMap[name] = session
 	sm.logger.Debug("[SessionManager]: Created '%s' Session", name)
@@ -150,8 +156,14 @@ func (sm *SessionManager) handleDisconnected(client types.Connection) {
 }
 
 func (sm *SessionManager) setupDefaultSession() {
+	// Create new logger with Session prefix
+	logger := util.Logger{
+		LogLevel: sm.logger.LogLevel,
+		Prefix:   "@" + defaultSessionName,
+	}
+
 	// Setup default session for when clients initially connect
-	defaultServer := mock.NewDefaultServer(sm.logger)
+	defaultServer := mock.NewDefaultProxy(logger)
 	defaultSession := sm.CreateSession(defaultSessionName, defaultServer)
 
 	defaultSession.Start()

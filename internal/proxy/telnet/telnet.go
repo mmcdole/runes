@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strings"
 
 	"github.com/mmcdole/runes/internal/util"
 )
@@ -25,12 +26,13 @@ func NewTelnetProxy(log *util.Logger, host string, port string) *TelnetProxy {
 // Typically this would be an external game server that supports telnet
 // connections.
 type TelnetProxy struct {
-	inputChan  chan string
-	outputChan chan string
-	conn       net.Conn
-	host       string
-	port       string
-	log        *util.Logger
+	inputChan   chan string
+	outputChan  chan string
+	conn        net.Conn
+	host        string
+	port        string
+	log         *util.Logger
+	sessionName string
 }
 
 func (p *TelnetProxy) Connect() error {
@@ -105,6 +107,7 @@ func (p *TelnetProxy) processLines(buf []byte, data []byte) {
 	i := bytes.IndexByte(buf, '\n')
 	for i >= 0 {
 		// Output the line
+		p.log.Trace("[TelnetProxy]: Text Out: %s", strings.TrimSpace(string(buf[:i+1])))
 		p.outputChan <- string(buf[:i+1])
 		// Remove the processed line from the buffer
 		buf = buf[i+1:]
@@ -113,6 +116,7 @@ func (p *TelnetProxy) processLines(buf []byte, data []byte) {
 	}
 	// Check if there is a partial line with no newline
 	if len(buf) > 0 {
+		p.log.Trace("[TelnetProxy]: Text Out: %s", strings.TrimSpace(string(buf)))
 		p.outputChan <- string(buf)
 	}
 }
@@ -120,6 +124,7 @@ func (p *TelnetProxy) processLines(buf []byte, data []byte) {
 func (p *TelnetProxy) sendInput() {
 	for {
 		input := <-p.inputChan
+		p.log.Trace("[TelnetProxy]: Command In: %s", strings.TrimSpace(input))
 		_, err := p.conn.Write([]byte(input))
 		if err != nil {
 			p.conn.Close()

@@ -11,8 +11,7 @@ import (
 )
 
 func main() {
-	logger := util.Logger{}
-	logger.SetLogLevel(util.TraceLogLevel)
+	logger := util.Logger{LogLevel: util.TraceLogLevel}
 	logger.Info("Runes Launched!")
 
 	conf := config.LoadOrCreateConfig()
@@ -24,11 +23,11 @@ func main() {
 	// ServerManager owns all configured servers (telnet, websocket) and forwards all new client connections
 	serverManager := server.NewServerManager(logger, conf, sessionManager.ConnectedChan(), sessionManager.DisconnectedChan())
 
-	// Initiate the default session and begin handling connections
-	sessionManager.Start()
-
 	// Run all configured servers and forward any connections/disconnections
 	serverManager.Start()
+
+	// Initiate the default session and begin handling connections
+	sessionManager.Start()
 
 	for {
 		time.Sleep(time.Second)

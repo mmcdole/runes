@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mmcdole/runes/internal/config"
+	"github.com/mmcdole/runes/internal/server/ssl"
 	"github.com/mmcdole/runes/internal/server/telnet"
 	"github.com/mmcdole/runes/internal/server/websocket"
 	"github.com/mmcdole/runes/internal/types"
@@ -26,6 +27,7 @@ type ServerManager struct {
 	disconnected chan types.Connection
 
 	telnetServer    *telnet.TelnetServer
+	sslServer       *ssl.SSLServer
 	websocketServer *websocket.WebsocketServer
 }
 
@@ -36,6 +38,14 @@ func (sm *ServerManager) Start() {
 		address := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
 		sm.telnetServer = telnet.NewTelnetServer(sm.log, address, sm.connected, sm.disconnected)
 		sm.telnetServer.Run()
+	}
+
+	// Setup SSL Server if configured
+	if sm.config.Server.SSL != nil {
+		conf := sm.config.Server.SSL
+		address := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
+		sm.sslServer = ssl.NewSSLServer(sm.log, address, sm.connected, sm.disconnected)
+		sm.sslServer.Run()
 	}
 
 	// Setup Websocket Server if configured

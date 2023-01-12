@@ -25,6 +25,11 @@ func LoadOrCreateConfig() *Config {
 	k.Load(confmap.Provider(map[string]interface{}{
 		"server.telnet.port":                 "2000",
 		"server.telnet.host":                 "",
+		"server.ssl.port":                    "2001",
+		"server.ssl.host":                    "",
+		"server.ssl.generatePair":            true,
+		"server.ssl.certPath":                "cert.pem",
+		"server.ssl.keyPath":                 "key.pem",
 		"core.enableColors":                  true,
 		"core.commandPrefix":                 "!",
 		"core.commandSeparator":              ";",

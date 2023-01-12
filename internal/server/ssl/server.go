@@ -1,4 +1,4 @@
-package telnet
+package ssl
 
 import (
 	"net"
@@ -7,15 +7,15 @@ import (
 	"github.com/mmcdole/runes/internal/util"
 )
 
-type TelnetServer struct {
+type SSLServer struct {
 	Address      string
 	connected    chan types.Connection
 	disconnected chan types.Connection
 	logger       util.Logger
 }
 
-func NewTelnetServer(logger util.Logger, address string, connected chan types.Connection, disconnected chan types.Connection) *TelnetServer {
-	return &TelnetServer{
+func NewSSLServer(logger util.Logger, address string, connected chan types.Connection, disconnected chan types.Connection) *SSLServer {
+	return &SSLServer{
 		Address:      address,
 		connected:    connected,
 		disconnected: disconnected,
@@ -23,20 +23,19 @@ func NewTelnetServer(logger util.Logger, address string, connected chan types.Co
 	}
 }
 
-func (ts *TelnetServer) Run() error {
+func (ts *SSLServer) Run() error {
 	ln, err := net.Listen("tcp", ts.Address)
 	if err != nil {
-		ts.logger.Debug("[TelnetServer]: Failed to start server: %v", err)
 		return err
 	}
 
 	go ts.acceptConnections(ln)
 
-	ts.logger.Debug("[TelnetServer]: Started server at '%s'", ts.Address)
+	ts.logger.Debug("[SSLServer]: Started server at '%s'", ts.Address)
 	return nil
 }
 
-func (ts *TelnetServer) acceptConnections(ln net.Listener) {
+func (ts *SSLServer) acceptConnections(ln net.Listener) {
 	defer ln.Close()
 
 	for {
@@ -45,10 +44,10 @@ func (ts *TelnetServer) acceptConnections(ln net.Listener) {
 			return
 		}
 
-		ts.logger.Debug("[TelnetServer]: Client Connected: '%s'", conn.RemoteAddr().String())
+		ts.logger.Debug("[SSLServer]: Client Connected: '%s'", conn.RemoteAddr().String())
 
 		// Create telnet connection wrapper struct
-		tc := NewTelnetConnection(ts.logger, conn, ts.disconnected)
+		tc := NewSSLConnection(ts.logger, conn, ts.disconnected)
 		// Event externally that a new connection has been produced
 		ts.connected <- tc
 		// Begin receiving and sending input/output from the telnet connection

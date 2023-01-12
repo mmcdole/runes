@@ -12,15 +12,12 @@ const (
 )
 
 type Logger struct {
-	logLevel LogLevel
-}
-
-func (l *Logger) SetLogLevel(level LogLevel) {
-	l.logLevel = level
+	LogLevel LogLevel
+	Prefix   string
 }
 
 func (l *Logger) log(level LogLevel, message string, args ...interface{}) {
-	if level > l.logLevel {
+	if level > l.LogLevel {
 		return
 	}
 
@@ -32,7 +29,11 @@ func (l *Logger) log(level LogLevel, message string, args ...interface{}) {
 	}[level]
 
 	formattedMessage := fmt.Sprintf(message, args...)
-	fmt.Printf("[%s] %s\n", levelRunes, formattedMessage)
+	if l.Prefix != "" {
+		fmt.Printf("[%s] [%s] %s\n", levelRunes, l.Prefix, formattedMessage)
+	} else {
+		fmt.Printf("[%s] %s\n", levelRunes, formattedMessage)
+	}
 }
 
 func (l *Logger) Debug(message string, args ...interface{}) {

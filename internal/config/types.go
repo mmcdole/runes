@@ -20,6 +20,14 @@ type CoreConfig struct {
 type ServerConfig struct {
 	Telnet    *TelnetServerConfig    `koanf:"telnet"`
 	Websocket *WebsocketServerConfig `koanf:"websocket"`
+	SSL       *SSLServerConfig       `koanf:"ssl"`
+}
+type SSLServerConfig struct {
+	Host         string `koanf:"host"`
+	Port         int    `koanf:"port"`
+	CertPath     string `koanf:"certPath"`
+	KeyPath      string `koanf:"keyPath"`
+	GeneratePair bool   `koanf:"generatePair"`
 }
 
 type TelnetServerConfig struct {

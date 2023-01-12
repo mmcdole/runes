@@ -78,7 +78,7 @@ type Session struct {
 }
 
 func (s *Session) AttachClient(client types.Connection) {
-	s.log.Debug("[Session@%s]: Client: '%s' Attached", s.Name, client.Name())
+	s.log.Debug("[Session]: Client: '%s' Attached", client.Name())
 	s.clientConnections[client.ID()] = client
 
 	s.SwitchClientToBuffer(client, primaryBufferName)
@@ -87,7 +87,7 @@ func (s *Session) AttachClient(client types.Connection) {
 }
 
 func (s *Session) DetachClient(client types.Connection) {
-	s.log.Debug("[Session@%s]: Client: '%s' Detached", s.Name, client.Name())
+	s.log.Debug("[Session]: Client: '%s' Detached", client.Name())
 	delete(s.clientConnections, client.ID())
 	client.SetInputChan(nil)
 }
@@ -146,35 +146,35 @@ func (s *Session) Start() {
 		}
 	}()
 
-	s.log.Debug("[Session@%s]: Started", s.Name)
+	s.log.Debug("[Session]: Started")
 }
 
 func (s *Session) handlePluginCommand(command string) {
-	s.log.Trace("[Session@%s]: Command In (Plugin): '%s'", s.Name, strings.TrimSpace(command))
+	s.log.Trace("[Session]: Command In (Plugin): %s", strings.TrimSpace(command))
 
 	// Foward processed commands from the PluginEngine to the Proxy
 
-	s.log.Trace("[Session@%s]: Command Out (Proxy): '%s'", s.Name, strings.TrimSpace(command))
+	s.log.Trace("[Session]: Command Out (Proxy): %s", strings.TrimSpace(command))
 	s.proxyConnection.Input() <- command
 }
 
 func (s *Session) handlePluginOutput(output plugin.BufferOutput) {
-	s.log.Trace("[Session@%s]: Text In (Plugin): %s", s.Name, strings.TrimSpace(output.Line))
+	s.log.Trace("[Session]: Text In (Plugin): %s", strings.TrimSpace(output.Line))
 
 	s.writeBufferLine(output.BufferName, output.Line)
 
-	s.log.Trace("[Session@%s]: Text Out (Client): %s", s.Name, strings.TrimSpace(output.Line))
+	s.log.Trace("[Session]: Text Out (Client): %s", strings.TrimSpace(output.Line))
 }
 
 func (s *Session) handleProxyOutput(output string) {
-	s.log.Trace("[Session@%s]: Text In (Proxy): %s", s.Name, strings.TrimSpace(output))
+	s.log.Trace("[Session]: Text In (Proxy): %s", strings.TrimSpace(output))
 
-	s.log.Trace("[Session@%s]: Text Out (Plugin): %s", s.Name, strings.TrimSpace(output))
+	s.log.Trace("[Session]: Text Out (Plugin): %s", strings.TrimSpace(output))
 	s.pluginEngine.InTextLineChan <- output
 }
 
 func (s *Session) handleClientInput(input *types.ConnectionInput) {
-	s.log.Trace("[Session@%s]: Command In (Client): '%s'", s.Name, strings.TrimSpace(input.Text))
+	s.log.Trace("[Session]: Command In (Client): %s", strings.TrimSpace(input.Text))
 
 	// Check if input is a runes command, otherwise send to plugin engine
 	// TODO: look into output from handleCommand
@@ -183,7 +183,7 @@ func (s *Session) handleClientInput(input *types.ConnectionInput) {
 		// TODO: investigate proper behavior
 		// s.writeBufferLine("", input.Text)
 
-		s.log.Trace("[Session@%s]: Command Out (Plugin): '%s'", s.Name, strings.TrimSpace(input.Text))
+		s.log.Trace("[Session]: Command Out (Plugin): %s", strings.TrimSpace(input.Text))
 		s.pluginEngine.InCommandChan <- input.Text
 	}
 }
