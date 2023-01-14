@@ -5,7 +5,9 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+
 	"github.com/mmcdole/runes/internal/proxy/telnet"
+	"github.com/mmcdole/runes/internal/util"
 )
 
 type SessionCommand struct{}
@@ -82,7 +84,13 @@ func (s *SessionCommand) handleSessionCreateTelnetCommand(params *CommandParams)
 
 	// TODO: Validate telnet parameters/args
 
-	telnetProxy := telnet.NewTelnetProxy(&params.Session.log, telnetHost, telnetPort)
+	// Create new logger with Session prefix
+	logger := &util.Logger{
+		LogLevel: params.Session.log.LogLevel,
+		Prefix:   "@" + sessionName,
+	}
+
+	telnetProxy := telnet.NewTelnetProxy(logger, telnetHost, telnetPort)
 	session := params.Session.sessionManager.CreateSession(sessionName, telnetProxy)
 	params.Session.sessionManager.AttachClientSession(params.Executor, sessionName)
 	params.writeToExecutor(fmt.Sprintf("Attached to session: %s\n", sessionName))

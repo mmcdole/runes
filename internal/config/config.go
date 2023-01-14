@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/adrg/xdg"
 	"github.com/knadh/koanf"
@@ -28,10 +29,10 @@ func LoadOrCreateConfig() *Config {
 		"server.ssl.port":                    "2001",
 		"server.ssl.host":                    "",
 		"server.ssl.generatePair":            true,
-		"server.ssl.certPath":                "cert.pem",
-		"server.ssl.keyPath":                 "key.pem",
+		"server.ssl.certFile":                "cert.pem",
+		"server.ssl.keyFile":                 "key.pem",
 		"core.enableColors":                  true,
-		"core.commandPrefix":                 "!",
+		"core.commandPrefix":                 "@",
 		"core.commandSeparator":              ";",
 		"core.bufferSize":                    10000,
 		"core.bufferReplaySize":              100,
@@ -62,6 +63,9 @@ func LoadOrCreateConfig() *Config {
 	if err := k.Unmarshal("", &conf); err != nil {
 		log.Fatalf("Failed to unmarshal config: %v", err)
 	}
+
+	// Set the config directory, other files are sourced from here
+	conf.ConfigDir = filepath.Dir(configFile)
 
 	return conf
 }

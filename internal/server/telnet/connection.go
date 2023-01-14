@@ -11,7 +11,7 @@ import (
 
 type TelnetConnection struct {
 	logger         util.Logger
-	inputChan      chan *types.ConnectionInput
+	inputChan      chan *types.ClientCommand
 	outputChan     chan string
 	disconnectChan chan types.Connection
 	conn           net.Conn
@@ -36,11 +36,11 @@ func (tc *TelnetConnection) Name() string {
 	return fmt.Sprintf("telnet:%s", tc.conn.RemoteAddr())
 }
 
-func (tc *TelnetConnection) InputChan() chan *types.ConnectionInput {
+func (tc *TelnetConnection) InputChan() chan *types.ClientCommand {
 	return tc.inputChan
 }
 
-func (tc *TelnetConnection) SetInputChan(ic chan *types.ConnectionInput) {
+func (tc *TelnetConnection) SetInputChan(ic chan *types.ClientCommand) {
 	tc.inputChan = ic
 }
 
@@ -76,7 +76,7 @@ func (tc *TelnetConnection) readInput() {
 		}
 		// TODO: Nate! mutex on inputChan access?
 		if tc.inputChan != nil {
-			ci := types.ConnectionInput{
+			ci := types.ClientCommand{
 				Text:   string(buf[:n]),
 				Client: tc,
 			}

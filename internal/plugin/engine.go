@@ -1,9 +1,19 @@
 package plugin
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/mmcdole/runes/internal/config"
 	"github.com/mmcdole/runes/internal/util"
+)
+
+type PluginEvent int
+
+const (
+	ProxyConnectEvent PluginEvent = iota
+	ProxyDisconnectEvent
 )
 
 type BufferOutput struct {
@@ -11,15 +21,16 @@ type BufferOutput struct {
 	BufferName string
 }
 
-func NewPluginEngine(logger util.Logger) *PluginEngine {
+func NewPluginEngine(logger util.Logger, conf *config.Config) *PluginEngine {
 	return &PluginEngine{
 		InCommandChan:   make(chan string),
 		InTextLineChan:  make(chan string),
 		OutSendChan:     make(chan string),
 		OutCommandChan:  make(chan string),
 		OutTextLineChan: make(chan BufferOutput),
-		plugins:         []Plugin{},
+		plugins:         []*Plugin{},
 		logger:          logger,
+		config:          conf,
 	}
 }
 
@@ -44,12 +55,19 @@ type PluginEngine struct {
 	// Note: forward text lines and plugin output to the client buffers
 	OutTextLineChan chan BufferOutput
 
-	plugins []Plugin
+	plugins []*Plugin
 	logger  util.Logger
+	config  *config.Config
 }
 
 func (pe *PluginEngine) Start() {
 	pe.logger.Debug("[PluginEngine]: Started")
+
+	err := pe.loadOrCreateDefaultPlugin()
+	if err != nil {
+		pe.logger.Error("Failed to create or load default plugin: %v", err)
+		return
+	}
 
 	for {
 		select {
@@ -61,21 +79,46 @@ func (pe *PluginEngine) Start() {
 	}
 }
 
+func (pe *PluginEngine) loadOrCreateDefaultPlugin() error {
+	defaultPath := filepath.Join(pe.config.ConfigDir, "init.lua")
+
+	// Check if default plugin exists and create empty one if it doesn't
+	if _, err := os.Stat(defaultPath); os.IsNotExist(err) {
+		file, err := os.Create(defaultPath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+	}
+
+	// Load the default plugin
+	defaultPlugin := NewPlugin("default", defaultPath, pe)
+	pe.plugins = append(pe.plugins, defaultPlugin)
+	err := defaultPlugin.Load()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (pe *PluginEngine) handleCommand(command string) {
 	// TODO: process commands and check against alias list
 	pe.logger.Trace("[PluginEngine]: Command In: '%s'", strings.TrimSpace(command))
 
 	// TODO: Process Commands/check for aliases
+	handled := false
+	for _, plugin := range pe.plugins {
+		if executed := plugin.CheckAndExecuteAlias(command); executed {
+			handled = handled || executed
+		}
+	}
 
-	// cmd := strings.TrimSpace(command)
-
-	// for _, plugin := range pe.plugins {
-	//    if plugin.Aliases[cmd]
-	// }
-
-	pe.logger.Trace("[PluginEngine]: Command Out: '%s'", strings.TrimSpace(command))
-
-	pe.OutCommandChan <- command
+	// Command wasn't an alias, so we will forward it to the proxy
+	if !handled {
+		pe.logger.Trace("[PluginEngine]: Command Out: '%s'", strings.TrimSpace(command))
+		pe.OutCommandChan <- command
+	}
 }
 
 func (pe *PluginEngine) handleTextLine(line string) {
@@ -87,4 +130,8 @@ func (pe *PluginEngine) handleTextLine(line string) {
 
 	// Don't specify buffer to make it "primary"
 	pe.OutTextLineChan <- BufferOutput{Line: line}
+}
+
+func (pe *PluginEngine) handlePluginSend(cmd string) {
+	pe.OutSendChan <- cmd
 }

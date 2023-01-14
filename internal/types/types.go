@@ -1,6 +1,6 @@
 package types
 
-type ConnectionInput struct {
+type ClientCommand struct {
 	Client Connection
 	Text   string
 }
@@ -8,8 +8,8 @@ type ConnectionInput struct {
 type Connection interface {
 	ID() string
 	Name() string
-	InputChan() chan *ConnectionInput
-	SetInputChan(chan *ConnectionInput)
+	InputChan() chan *ClientCommand
+	SetInputChan(chan *ClientCommand)
 	OutputChan() chan string
 	DisconnectChan() chan Connection
 	Close() error

@@ -1,9 +1,10 @@
 package config
 
 type Config struct {
-	Server ServerConfig `koanf:"server"`
-	Core   CoreConfig   `koanf:"core"`
-	Proxy  ProxyConfig  `koanf:"proxy"`
+	ConfigDir string
+	Server    ServerConfig `koanf:"server"`
+	Core      CoreConfig   `koanf:"core"`
+	Proxy     ProxyConfig  `koanf:"proxy"`
 }
 
 type CoreConfig struct {
@@ -25,8 +26,8 @@ type ServerConfig struct {
 type SSLServerConfig struct {
 	Host         string `koanf:"host"`
 	Port         int    `koanf:"port"`
-	CertPath     string `koanf:"certPath"`
-	KeyPath      string `koanf:"keyPath"`
+	CertFile     string `koanf:"certFile"`
+	KeyFile      string `koanf:"keyFile"`
 	GeneratePair bool   `koanf:"generatePair"`
 }
 

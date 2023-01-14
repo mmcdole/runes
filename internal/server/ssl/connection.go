@@ -12,7 +12,7 @@ import (
 
 type SSLConnection struct {
 	logger         util.Logger
-	inputChan      chan *types.ConnectionInput
+	inputChan      chan *types.ClientCommand
 	inputChanMu    sync.Mutex
 	outputChan     chan string
 	disconnectChan chan types.Connection
@@ -39,11 +39,11 @@ func (tc *SSLConnection) Name() string {
 	return fmt.Sprintf("ssl:%s", tc.conn.RemoteAddr())
 }
 
-func (tc *SSLConnection) InputChan() chan *types.ConnectionInput {
+func (tc *SSLConnection) InputChan() chan *types.ClientCommand {
 	return tc.inputChan
 }
 
-func (tc *SSLConnection) SetInputChan(ic chan *types.ConnectionInput) {
+func (tc *SSLConnection) SetInputChan(ic chan *types.ClientCommand) {
 	tc.inputChan = ic
 }
 
@@ -80,7 +80,7 @@ func (tc *SSLConnection) readInput() {
 		// TODO: Nate! mutex on inputChan access?
 
 		if tc.inputChan != nil {
-			ci := types.ConnectionInput{
+			ci := types.ClientCommand{
 				Text:   string(buf[:n]),
 				Client: tc,
 			}

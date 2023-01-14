@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"strings"
+
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -11,9 +13,8 @@ function alias(cmd, arg2)
         registerAlias(cmd, arg2)
     else
         -- argument is a string, convert it to a function that calls send
-        simpleCmdText = arg2
         fn = function()
-            send(simpleCmdText)
+            send(arg2)
         end
         registerAlias(cmd, fn)
     end
@@ -26,6 +27,7 @@ type Plugin struct {
 	Engine  *PluginEngine
 	Actions map[string]*lua.LFunction
 	Aliases map[string]*lua.LFunction
+	Events  map[PluginEvent]*lua.LFunction
 }
 
 func NewPlugin(name string, path string, engine *PluginEngine) *Plugin {
@@ -37,10 +39,27 @@ func NewPlugin(name string, path string, engine *PluginEngine) *Plugin {
 }
 
 func (p *Plugin) Load() error {
+	// Setup alias/action/event handlers
+	p.Actions = make(map[string]*lua.LFunction)
+	p.Aliases = make(map[string]*lua.LFunction)
+	p.Events = make(map[PluginEvent]*lua.LFunction) // TODO: Confirm we want single event handler per plugin?
+
+	// Close out any previous Lua state before a reload
+	if p.State != nil {
+		p.State.Close()
+	}
+
 	// Create a new Lua state
 	p.State = lua.NewState()
 
-	// load the lua library file
+	// Register the Go functions as Lua functions
+	p.State.SetGlobal("send", p.State.NewFunction(p.pluginSend))
+	// p.State.SetGlobal("registerAction", p.registerAction)
+	p.State.SetGlobal("registerAlias", p.State.NewFunction(p.pluginAlias))
+	// p.State.SetGlobal("unregisterAction", p.unregisterAction)
+	// p.State.SetGlobal("unregisterAlias", p.unregisterAlias)
+
+	// Load the lua library file
 	if err := p.State.DoString(luaLibraryFile); err != nil {
 		p.State.Close()
 		return err
@@ -52,28 +71,30 @@ func (p *Plugin) Load() error {
 		return err
 	}
 
-	p.Actions = make(map[string]*lua.LFunction)
-	p.Aliases = make(map[string]*lua.LFunction)
-
-	// register the Go functions as Lua functions
-	// p.State.SetGlobal("send", p.send)
-	// p.State.SetGlobal("registerAction", p.registerAction)
-	p.State.SetGlobal("registerAlias", p.State.NewFunction(p.registerAlias))
-	// p.State.SetGlobal("unregisterAction", p.unregisterAction)
-	// p.State.SetGlobal("unregisterAlias", p.unregisterAlias)
-
 	return nil
 }
 
-func (p *Plugin) send(state *lua.LState) int {
-	return 1
+func (p *Plugin) CheckAndExecuteAlias(cmd string) bool {
+	cmd = strings.TrimSpace(cmd)
+	if fn, ok := p.Aliases[cmd]; ok {
+		p.State.Push(fn)
+		p.State.PCall(0, 0, nil) // TODO: handle error?
+		return true
+	}
+	return false
 }
 
-func (p *Plugin) registerAction(state *lua.LState) int {
-	return 1
+func (p *Plugin) CheckAndExecuteAction(text string) bool {
+	return false
 }
 
-func (p *Plugin) registerAlias(state *lua.LState) int {
+func (p *Plugin) pluginSend(state *lua.LState) int {
+	str := p.State.CheckString(1)
+	p.Engine.handlePluginSend(str + "\n")
+	return 0
+}
+
+func (p *Plugin) pluginAlias(state *lua.LState) int {
 	// get the alias name
 	name := state.ToString(1)
 	// get the function
@@ -82,5 +103,5 @@ func (p *Plugin) registerAlias(state *lua.LState) int {
 	// register the alias
 	p.Aliases[name] = fn
 
-	return 1
+	return 0
 }

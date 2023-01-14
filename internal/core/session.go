@@ -44,7 +44,7 @@ import (
 )
 
 func NewSession(logger util.Logger, conf *config.Config, name string, proxy proxy.ProxyConnection, sm *SessionManager) *Session {
-	pe := plugin.NewPluginEngine(logger)
+	pe := plugin.NewPluginEngine(logger, conf)
 	bm := NewBufferManager(conf.Core.BufferSize)
 
 	session := &Session{
@@ -55,7 +55,7 @@ func NewSession(logger util.Logger, conf *config.Config, name string, proxy prox
 		sessionManager:    sm,
 		bufferManager:     bm,
 		pluginEngine:      pe,
-		inputChan:         make(chan *types.ConnectionInput),
+		inputChan:         make(chan *types.ClientCommand),
 		log:               logger,
 	}
 
@@ -67,7 +67,7 @@ func NewSession(logger util.Logger, conf *config.Config, name string, proxy prox
 type Session struct {
 	Name              string
 	config            *config.Config
-	inputChan         chan *types.ConnectionInput
+	inputChan         chan *types.ClientCommand
 	sessionManager    *SessionManager
 	bufferManager     *BufferManager
 	pluginEngine      *plugin.PluginEngine
@@ -126,10 +126,11 @@ func (s *Session) Start() {
 				s.handlePluginCommand(input)
 			case input := <-s.pluginEngine.OutSendChan:
 				// Plugin send() calls have generated new commands to be processed
+				s.log.Trace("[Session]: Send In (Plugin): %s", strings.TrimSpace(input))
 
 				// TODO: refactor this to maybe not use ClientInput? Plugin commands
 				// aren't truly the same as client input.
-				s.handleClientInput(&types.ConnectionInput{Text: input})
+				s.handleClientInput(&types.ClientCommand{Text: input})
 			case output := <-s.pluginEngine.OutTextLineChan:
 				s.handlePluginOutput(output)
 			}
@@ -173,8 +174,30 @@ func (s *Session) handleProxyOutput(output string) {
 	s.pluginEngine.InTextLineChan <- output
 }
 
-func (s *Session) handleClientInput(input *types.ConnectionInput) {
+func (s *Session) handleClientInput(input *types.ClientCommand) {
 	s.log.Trace("[Session]: Command In (Client): %s", strings.TrimSpace(input.Text))
+
+	// Split commands that have multiple commands separated by separator
+	// e.g. "w;w" will become two commands "w" and "w"
+	commands := strings.Split(input.Text, s.config.Core.CommandSeparator)
+
+	for _, command := range commands {
+
+		// Trim leading and trailing whitespace from the command
+		command = strings.TrimSpace(command)
+
+		// Wrap the command and use the same client as the parent command
+		cc := &types.ClientCommand{
+			Text:   command,
+			Client: input.Client,
+		}
+
+		// Check if the command is a runes command, otherwise send to plugin engine
+		if ok := s.handleCommand(cc); !ok {
+			s.log.Trace("[Session]: Command Out (Plugin): %s", command)
+			s.pluginEngine.InCommandChan <- command
+		}
+	}
 
 	// Check if input is a runes command, otherwise send to plugin engine
 	// TODO: look into output from handleCommand
@@ -227,7 +250,7 @@ func (s *Session) writeBufferLine(bufferName string, line string) {
 }
 
 // Handle built-in commands otherwise, return false
-func (s *Session) handleCommand(input *types.ConnectionInput) bool {
+func (s *Session) handleCommand(input *types.ClientCommand) bool {
 	cmdPrefix := s.config.Core.CommandPrefix
 
 	// Command has configured prefix?
