@@ -23,7 +23,7 @@ type BufferOutput struct {
 
 func NewPluginEngine(logger util.Logger, conf *config.Config) *PluginEngine {
 	return &PluginEngine{
-		InCommandChan:   make(chan string),
+		InCommandChan:   make(chan string, 20),
 		InTextLineChan:  make(chan string),
 		OutSendChan:     make(chan string),
 		OutCommandChan:  make(chan string),
@@ -61,22 +61,24 @@ type PluginEngine struct {
 }
 
 func (pe *PluginEngine) Start() {
-	pe.logger.Debug("[PluginEngine]: Started")
+	go func() {
+		pe.logger.Debug("[PluginEngine]: Started")
 
-	err := pe.loadOrCreateDefaultPlugin()
-	if err != nil {
-		pe.logger.Error("Failed to create or load default plugin: %v", err)
-		return
-	}
-
-	for {
-		select {
-		case command := <-pe.InCommandChan:
-			pe.handleCommand(command)
-		case line := <-pe.InTextLineChan:
-			pe.handleTextLine(line)
+		err := pe.loadOrCreateDefaultPlugin()
+		if err != nil {
+			pe.logger.Error("Failed to create or load default plugin: %v", err)
+			return
 		}
-	}
+
+		for {
+			select {
+			case command := <-pe.InCommandChan:
+				pe.handleCommand(command)
+			case line := <-pe.InTextLineChan:
+				pe.handleTextLine(line)
+			}
+		}
+	}()
 }
 
 func (pe *PluginEngine) loadOrCreateDefaultPlugin() error {

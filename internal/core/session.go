@@ -34,13 +34,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/fatih/color"
+
 	"github.com/mmcdole/runes/internal/config"
 	"github.com/mmcdole/runes/internal/plugin"
 	"github.com/mmcdole/runes/internal/proxy"
 	"github.com/mmcdole/runes/internal/types"
 	"github.com/mmcdole/runes/internal/util"
-
-	"github.com/fatih/color"
 )
 
 func NewSession(logger util.Logger, conf *config.Config, name string, proxy proxy.ProxyConnection, sm *SessionManager) *Session {
@@ -105,7 +105,7 @@ func (s *Session) SwitchClientToBuffer(client types.Connection, bufferName strin
 
 func (s *Session) Start() {
 	// Start processing plugin input/output
-	go s.pluginEngine.Start()
+	s.pluginEngine.Start()
 
 	// Handle input from Clients
 	go func() {
@@ -125,13 +125,6 @@ func (s *Session) Start() {
 				s.handlePluginCommand(input)
 			case output := <-s.pluginEngine.OutTextLineChan:
 				s.handlePluginOutput(output)
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
 			case input := <-s.pluginEngine.OutSendChan:
 				s.handlePluginSend(input)
 			}
@@ -182,7 +175,7 @@ func (s *Session) handleClientInput(input *types.ClientCommand) {
 
 func (s *Session) handlePluginSend(input string) {
 	// Plugin send() calls have generated new commands to be processed
-	s.log.Trace("[Session]: [Plugin->Session] Send: %s", strings.TrimSpace(input))
+	s.log.Trace("[Session]: [Plugin->Session] Command (Send): %s", strings.TrimSpace(input))
 
 	// TODO: refactor this to maybe not use ClientInput? Plugin commands
 	// aren't truly the same as client input.
@@ -190,25 +183,29 @@ func (s *Session) handlePluginSend(input string) {
 }
 
 func (s *Session) handleInput(input *types.ClientCommand) {
-	// Split commands that have multiple commands separated by separator
-	// e.g. "w;w" will become two commands "w" and "w"
-	commands := strings.Split(input.Text, s.config.Core.CommandSeparator)
-
-	for _, command := range commands {
-		// Trim leading and trailing whitespace from the command
-		cmd := strings.TrimSpace(command)
-
-		// Wrap the command and use the same client as the parent command
-		cc := &types.ClientCommand{
-			Text:   cmd,
-			Client: input.Client,
+	// check if input command has newline
+	if strings.HasSuffix(input.Text, "\n") {
+		// Split commands that have multiple commands separated by separator
+		commands := strings.Split(input.Text, s.config.Core.CommandSeparator)
+		for _, command := range commands {
+			// Trim leading and trailing whitespace from the command
+			cmd := strings.TrimSpace(command)
+			// add newline to the end of command
+			cmd += "\n"
+			// Wrap the command and use the same client as the parent command
+			cc := &types.ClientCommand{
+				Text:   cmd,
+				Client: input.Client,
+			}
+			// Check if the command is a runes command, otherwise send to plugin engine
+			if ok := s.handleCommand(cc); !ok {
+				s.log.Trace("[Session]: [Session->Plugin] Command: %s", cmd)
+				s.pluginEngine.InCommandChan <- cmd
+			}
 		}
-
-		// Check if the command is a runes command, otherwise send to plugin engine
-		if ok := s.handleCommand(cc); !ok {
-			s.log.Trace("[Session]: [Session->Plugin] Command: %s", cmd)
-			s.pluginEngine.InCommandChan <- cmd
-		}
+	} else {
+		s.log.Trace("[Session]: [Session->Plugin] Command: %s", input.Text)
+		s.pluginEngine.InCommandChan <- input.Text
 	}
 }
 
