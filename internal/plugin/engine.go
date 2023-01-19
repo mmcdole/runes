@@ -104,19 +104,20 @@ func (pe *PluginEngine) loadOrCreateDefaultPlugin() error {
 
 func (pe *PluginEngine) handleCommand(command string) {
 	// TODO: process commands and check against alias list
-	pe.logger.Trace("[PluginEngine]: Command In: '%s'", strings.TrimSpace(command))
+	pe.logger.Trace("[PluginEngine]: Command In: %s", strings.TrimSpace(command))
 
 	// TODO: Process Commands/check for aliases
-	handled := false
+	handledAlias := false
 	for _, plugin := range pe.plugins {
 		if executed := plugin.CheckAndExecuteAlias(command); executed {
-			handled = handled || executed
+			handledAlias = handledAlias || executed
 		}
 	}
 
-	// Command wasn't an alias, so we will forward it to the proxy
-	if !handled {
-		pe.logger.Trace("[PluginEngine]: Command Out: '%s'", strings.TrimSpace(command))
+	if handledAlias {
+		pe.logger.Trace("[PluginEngine]: Command Matched Alias: %s", strings.TrimSpace(command))
+	} else {
+		pe.logger.Trace("[PluginEngine]: Command Out (Passthrough): %s", strings.TrimSpace(command))
 		pe.OutCommandChan <- command
 	}
 }
@@ -133,5 +134,6 @@ func (pe *PluginEngine) handleTextLine(line string) {
 }
 
 func (pe *PluginEngine) handlePluginSend(cmd string) {
+	pe.logger.Trace("[PluginEngine]: Command Out (Send): %s", strings.TrimSpace(cmd))
 	pe.OutSendChan <- cmd
 }

@@ -26,13 +26,12 @@ func NewTelnetProxy(log *util.Logger, host string, port string) *TelnetProxy {
 // Typically this would be an external game server that supports telnet
 // connections.
 type TelnetProxy struct {
-	inputChan   chan string
-	outputChan  chan string
-	conn        net.Conn
-	host        string
-	port        string
-	log         *util.Logger
-	sessionName string
+	inputChan  chan string
+	outputChan chan string
+	conn       net.Conn
+	host       string
+	port       string
+	log        *util.Logger
 }
 
 func (p *TelnetProxy) Connect() error {

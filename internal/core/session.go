@@ -111,7 +111,6 @@ func (s *Session) Start() {
 	go func() {
 		for {
 			select {
-			// TODO: need to fan-in all the client input
 			case input := <-s.inputChan:
 				s.handleClientInput(input)
 			}
@@ -124,15 +123,17 @@ func (s *Session) Start() {
 			select {
 			case input := <-s.pluginEngine.OutCommandChan:
 				s.handlePluginCommand(input)
-			case input := <-s.pluginEngine.OutSendChan:
-				// Plugin send() calls have generated new commands to be processed
-				s.log.Trace("[Session]: Send In (Plugin): %s", strings.TrimSpace(input))
-
-				// TODO: refactor this to maybe not use ClientInput? Plugin commands
-				// aren't truly the same as client input.
-				s.handleClientInput(&types.ClientCommand{Text: input})
 			case output := <-s.pluginEngine.OutTextLineChan:
 				s.handlePluginOutput(output)
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case input := <-s.pluginEngine.OutSendChan:
+				s.handlePluginSend(input)
 			}
 		}
 	}()
@@ -151,63 +152,63 @@ func (s *Session) Start() {
 }
 
 func (s *Session) handlePluginCommand(command string) {
-	s.log.Trace("[Session]: Command In (Plugin): %s", strings.TrimSpace(command))
+	s.log.Trace("[Session]: [Plugin->Session] Command: %s", strings.TrimSpace(command))
 
 	// Foward processed commands from the PluginEngine to the Proxy
 
-	s.log.Trace("[Session]: Command Out (Proxy): %s", strings.TrimSpace(command))
+	s.log.Trace("[Session]: [Session->Proxy] Command: %s", strings.TrimSpace(command))
 	s.proxyConnection.Input() <- command
 }
 
 func (s *Session) handlePluginOutput(output plugin.BufferOutput) {
-	s.log.Trace("[Session]: Text In (Plugin): %s", strings.TrimSpace(output.Line))
+	s.log.Trace("[Session]: [Plugin->Session] Text: %s", strings.TrimSpace(output.Line))
 
 	s.writeBufferLine(output.BufferName, output.Line)
 
-	s.log.Trace("[Session]: Text Out (Client): %s", strings.TrimSpace(output.Line))
+	s.log.Trace("[Session]: [Session->Client] Text: %s", strings.TrimSpace(output.Line))
 }
 
 func (s *Session) handleProxyOutput(output string) {
-	s.log.Trace("[Session]: Text In (Proxy): %s", strings.TrimSpace(output))
+	s.log.Trace("[Session]: [Proxy->Session]: Text: %s", strings.TrimSpace(output))
 
-	s.log.Trace("[Session]: Text Out (Plugin): %s", strings.TrimSpace(output))
+	s.log.Trace("[Session]: [Session->Plugin] Text: %s", strings.TrimSpace(output))
 	s.pluginEngine.InTextLineChan <- output
 }
 
 func (s *Session) handleClientInput(input *types.ClientCommand) {
-	s.log.Trace("[Session]: Command In (Client): %s", strings.TrimSpace(input.Text))
+	s.log.Trace("[Session]: [Client->Session] Command: %s", strings.TrimSpace(input.Text))
+	s.handleInput(input)
+}
 
+func (s *Session) handlePluginSend(input string) {
+	// Plugin send() calls have generated new commands to be processed
+	s.log.Trace("[Session]: [Plugin->Session] Send: %s", strings.TrimSpace(input))
+
+	// TODO: refactor this to maybe not use ClientInput? Plugin commands
+	// aren't truly the same as client input.
+	s.handleInput(&types.ClientCommand{Text: input})
+}
+
+func (s *Session) handleInput(input *types.ClientCommand) {
 	// Split commands that have multiple commands separated by separator
 	// e.g. "w;w" will become two commands "w" and "w"
 	commands := strings.Split(input.Text, s.config.Core.CommandSeparator)
 
 	for _, command := range commands {
-
 		// Trim leading and trailing whitespace from the command
-		command = strings.TrimSpace(command)
+		cmd := strings.TrimSpace(command)
 
 		// Wrap the command and use the same client as the parent command
 		cc := &types.ClientCommand{
-			Text:   command,
+			Text:   cmd,
 			Client: input.Client,
 		}
 
 		// Check if the command is a runes command, otherwise send to plugin engine
 		if ok := s.handleCommand(cc); !ok {
-			s.log.Trace("[Session]: Command Out (Plugin): %s", command)
-			s.pluginEngine.InCommandChan <- command
+			s.log.Trace("[Session]: [Session->Plugin] Command: %s", cmd)
+			s.pluginEngine.InCommandChan <- cmd
 		}
-	}
-
-	// Check if input is a runes command, otherwise send to plugin engine
-	// TODO: look into output from handleCommand
-	if ok := s.handleCommand(input); !ok {
-		// Write the user-command to primary buffer?
-		// TODO: investigate proper behavior
-		// s.writeBufferLine("", input.Text)
-
-		s.log.Trace("[Session]: Command Out (Plugin): %s", strings.TrimSpace(input.Text))
-		s.pluginEngine.InCommandChan <- input.Text
 	}
 }
 
