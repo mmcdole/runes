@@ -37,20 +37,20 @@ func (bm *BufferManager) AppendLine(bufferName string, line string) {
 	bm.bufferMus[bufferName].Unlock()
 }
 
-func (bm *BufferManager) AppendLines(bufferName string, lines []string) {
-	bufferName = bm.primaryOrBufferName(bufferName)
+// func (bm *BufferManager) AppendLines(bufferName string, lines []string) {
+// 	bufferName = bm.primaryOrBufferName(bufferName)
 
-	// Buffer doesn't exist, create it
-	if _, ok := bm.buffers[bufferName]; !ok {
-		bm.CreateBuffer(bufferName)
-	}
-	bm.bufferMus[bufferName].Lock()
-	bm.buffers[bufferName] = append(bm.buffers[bufferName], lines...)
-	if len(bm.buffers[bufferName]) > bm.maxLinesPerBuffer {
-		bm.buffers[bufferName] = bm.buffers[bufferName][len(bm.buffers[bufferName])-bm.maxLinesPerBuffer:]
-	}
-	bm.bufferMus[bufferName].Unlock()
-}
+// 	// Buffer doesn't exist, create it
+// 	if _, ok := bm.buffers[bufferName]; !ok {
+// 		bm.CreateBuffer(bufferName)
+// 	}
+// 	bm.bufferMus[bufferName].Lock()
+// 	bm.buffers[bufferName] = append(bm.buffers[bufferName], lines...)
+// 	if len(bm.buffers[bufferName]) > bm.maxLinesPerBuffer {
+// 		bm.buffers[bufferName] = bm.buffers[bufferName][len(bm.buffers[bufferName])-bm.maxLinesPerBuffer:]
+// 	}
+// 	bm.bufferMus[bufferName].Unlock()
+// }
 
 func (bm *BufferManager) CreateBuffer(bufferName string) {
 	bufferName = bm.primaryOrBufferName(bufferName)

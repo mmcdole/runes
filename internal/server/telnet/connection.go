@@ -3,6 +3,7 @@ package telnet
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mmcdole/runes/internal/types"
@@ -97,6 +98,8 @@ func (tc *TelnetConnection) sendOutput() {
 				tc.handleDisconnect()
 				break
 			}
+		case <-time.After(time.Second * 10): // echo a log
+			tc.logger.Trace("[TelnetServer]: Output Timed Out")
 		}
 	}
 }
