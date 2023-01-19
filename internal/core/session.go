@@ -199,7 +199,7 @@ func (s *Session) handleInput(input *types.ClientCommand) {
 			}
 			// Check if the command is a runes command, otherwise send to plugin engine
 			if ok := s.handleCommand(cc); !ok {
-				s.log.Trace("[Session]: [Session->Plugin] Command: %s", cmd)
+				s.log.Trace("[Session]: [Session->Plugin] Command: %s", strings.TrimSpace(cmd))
 				s.pluginEngine.InCommandChan <- cmd
 			}
 		}

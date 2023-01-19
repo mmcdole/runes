@@ -23,7 +23,7 @@ type BufferOutput struct {
 
 func NewPluginEngine(logger util.Logger, conf *config.Config) *PluginEngine {
 	return &PluginEngine{
-		InCommandChan:   make(chan string, 20),
+		InCommandChan:   make(chan string),
 		InTextLineChan:  make(chan string),
 		OutSendChan:     make(chan string),
 		OutCommandChan:  make(chan string),
