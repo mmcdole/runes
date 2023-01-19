@@ -1,0 +1,161 @@
+[33mcommit 9cca82a8abfeee6375abe2bc1e1c047a4b10b011[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Thu Jan 19 11:12:48 2023 -0600
+
+    tweak log output
+
+[33mcommit 1e914979067d441f3908343f24aa576b76c3f8b5[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Thu Jan 19 09:34:26 2023 -0600
+
+    tweak handleinput to not try and mess with control commands
+
+[33mcommit fdb3b69ffa915809c179ce4ef5c766d14396d122[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Thu Jan 19 01:05:44 2023 -0600
+
+    continue to work on channel issues
+
+[33mcommit 7b4f3dd01d1009bf4f70706cd8a31ed0840ce646[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Fri Jan 13 19:13:06 2023 -0600
+
+    Continue work on the plugin engine
+
+[33mcommit 67993300772024fe7341479f6df6a49b9754e8e6[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Thu Jan 12 01:37:37 2023 -0600
+
+    clean up logging some more, start to stub out SSLServer
+
+[33mcommit d60fbc7df013054abfc2a40978e2562d00ccd107[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Tue Jan 10 13:51:50 2023 -0600
+
+    fix buffer output
+
+[33mcommit 33acf59adefa56c3ed9427db70e561d90e9199e7[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Mon Jan 9 23:27:32 2023 -0600
+
+    start to stub out the plugin engine
+
+[33mcommit 48b370531528709b8430361ae8c903a2b3400bb7[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Sun Jan 8 23:02:21 2023 -0600
+
+    implement session connect, add some color support, etc
+
+[33mcommit a1bf38b670814250c2e188a4bc88e3f175f399f5[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Sun Jan 8 01:16:31 2023 -0600
+
+    Flesh out more of the session command.  Supports creating multiple telnet sessions and switching to them now.
+
+[33mcommit c0645e9f57fd307b98a1dabb7c2a5c57b2d76fb3[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Fri Jan 6 22:08:39 2023 -0600
+
+    write built-in command output just to the executing client
+
+[33mcommit 6b639a70966f17ddfb2155bc8eb42b03323dc370[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Thu Jan 5 19:18:14 2023 -0600
+
+    document command and output flow
+
+[33mcommit aabc5981bbca99bdd2b8cf50a13725001f3d939d[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Thu Jan 5 19:11:22 2023 -0600
+
+    start implementing buffer command and clean up naming
+
+[33mcommit 34a572b0ccd35fdfa586bdfabcceeed64993564b[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Thu Jan 5 16:24:56 2023 -0600
+
+    re-organize proxy/server packages, create servermanager, etc
+
+[33mcommit cc41180d4bd397d27c1ad9202dc7e19f68cc285e[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Thu Jan 5 01:13:54 2023 -0600
+
+    start implementing built-in command handling
+
+[33mcommit bd0a00da20a43e3a26a3b5c002aac9eaa4183556[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Wed Jan 4 20:42:56 2023 -0600
+
+    work on the buffer management / default buffer
+
+[33mcommit f1e651b99c054b18496d0fa3e01b554ab92f3aeb[m
+Author: mmcdole <simucal@gmail.com>
+Date:   Thu Jan 5 01:49:47 2023 +0000
+
+    delete old license
+
+[33mcommit 7e2e99ee8ecd9ab079f5145759c35ba7a2c0c5cc[m
+Author: mmcdole <simucal@gmail.com>
+Date:   Wed Jan 4 19:46:13 2023 -0600
+
+    Create LICENSE.md
+
+[33mcommit 9c0c83c074eb2ba88279c6d0c6827aafde4b1848[m
+Author: mmcdole <simucal@gmail.com>
+Date:   Wed Jan 4 19:44:06 2023 -0600
+
+    Create LICENSE
+
+[33mcommit b63e8767782f820bb0a26e9869a13eb63a0600a5[m
+Author: mmcdole <simucal@gmail.com>
+Date:   Wed Jan 4 19:41:44 2023 -0600
+
+    Update README.md
+
+[33mcommit da66ae82f869f45357d37af292582d3177d54d22[m
+Author: mmcdole <simucal@gmail.com>
+Date:   Wed Jan 4 19:17:55 2023 -0600
+
+    Update README.md
+
+[33mcommit 8a66de8a80c7ab905b3d4334a65405562db2eff5[m
+Author: mmcdole <simucal@gmail.com>
+Date:   Wed Jan 4 19:16:36 2023 -0600
+
+    Update README.md
+
+[33mcommit 02d5a1fcc20ffab861a6bc08e33f56914d45e3b5[m
+Author: mmcdole <simucal@gmail.com>
+Date:   Wed Jan 4 19:01:56 2023 -0600
+
+    Update README.md
+
+[33mcommit e61243441e2da3af4d20769993f9cadd3712cd0d[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Mon Jan 2 17:01:21 2023 -0600
+
+    delete binary
+
+[33mcommit 57d6d922844305e85fed2c06ad73797f4c4f17cb[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Mon Jan 2 16:27:29 2023 -0600
+
+    Further work on wiring up the input/output flow
+
+[33mcommit d187e1150de235728890461a33b4dca552c51593[m
+Author: mmcdole <simucal@gmail.com>
+Date:   Mon Jan 2 12:08:28 2023 -0600
+
+    Create README.md
+
+[33mcommit 6d2a8cbdeed9d4386f64d9949df401dd5aa26960[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Mon Jan 2 11:33:24 2023 -0600
+
+    continue to wire-up plugin engine and end-to-end flow
+
+[33mcommit 5a080c49c0c442acf69f1777b1f84efdef10929f[m
+Author: Matthew McDole <simucal@gmail.com>
+Date:   Mon Jan 2 00:36:43 2023 -0600
+
+    initial commit

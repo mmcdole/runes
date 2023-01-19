@@ -204,8 +204,10 @@ func (s *Session) handleInput(input *types.ClientCommand) {
 			}
 		}
 	} else {
-		s.log.Trace("[Session]: [Session->Plugin] Command: %s", input.Text)
-		s.pluginEngine.InCommandChan <- input.Text
+		// Input was not a command ending in newline, pass through input to server
+		s.log.Trace("[Session]: [Session->Proxy] Command (Passthrough): %s", input.Text)
+		s.proxyConnection.Input() <- input.Text
+		// s.pluginEngine.InCommandChan <- input.Text
 	}
 }
 
