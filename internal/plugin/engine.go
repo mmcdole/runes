@@ -74,6 +74,10 @@ func (pe *PluginEngine) Start() {
 	go pe.processText()
 }
 
+func (pe *PluginEngine) GetPlugins() []*Plugin {
+	return pe.plugins
+}
+
 func (pe *PluginEngine) EnqueueCommand(cmd string) {
 	pe.inCommandChan <- cmd
 }

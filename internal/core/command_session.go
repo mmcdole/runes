@@ -147,8 +147,14 @@ func (s *SessionCommand) handleSessionConnectCommand(params *CommandParams) bool
 }
 
 func (c *SessionCommand) Usage() string {
-	// TODO: Session Usage
-	return "Session Usage!"
+	usage := `session list - Show info about availble sessions
+ session create <name> telnet <mud host> <mud port> - Create telnet session
+ session create <name> ssl <mud host> <mud port> - Create ssl session
+ session create <name> shell <command> - Create shell session
+ session kill <name> - kill session
+ session switch <name> - Switch to existing session
+ session connect - Reconnect to the active session's connection`
+	return usage
 }
 
 func (c *SessionCommand) Help() string {

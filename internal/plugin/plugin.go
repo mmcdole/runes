@@ -6,28 +6,35 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-const luaLibraryFile = `-- alias a command, or function so it can be called by another name 
+const luaLibraryFile = `-- Runes Plugin API
+-- alias a command, or function so it can be called by another name 
 function alias(cmd, arg2)
     if type(arg2) == "function" then
         -- argument is a function, register it as an alias
-        registerAlias(cmd, arg2)
+        runeAlias(cmd, arg2)
     else
         -- argument is a string, convert it to a function that calls send
         fn = function()
             send(arg2)
         end
-        registerAlias(cmd, fn)
+        runeAlias(cmd, fn)
     end
+end
+
+-- send a command to your session 
+function send(cmd)
+  runeSend(cmd)
 end`
 
 type Plugin struct {
-	Name    string
-	Path    string
-	State   *lua.LState
-	Engine  *PluginEngine
-	Actions map[string]*lua.LFunction
-	Aliases map[string]*lua.LFunction
-	Events  map[PluginEvent]*lua.LFunction
+	Name     string
+	IsActive bool
+	Path     string
+	State    *lua.LState
+	Engine   *PluginEngine
+	Actions  map[string]*lua.LFunction
+	Aliases  map[string]*lua.LFunction
+	Events   map[PluginEvent]*lua.LFunction
 }
 
 func NewPlugin(name string, path string, engine *PluginEngine) *Plugin {
@@ -53,9 +60,9 @@ func (p *Plugin) Load() error {
 	p.State = lua.NewState()
 
 	// Register the Go functions as Lua functions
-	p.State.SetGlobal("send", p.State.NewFunction(p.pluginSend))
+	p.State.SetGlobal("runeSend", p.State.NewFunction(p.pluginSend))
 	// p.State.SetGlobal("registerAction", p.registerAction)
-	p.State.SetGlobal("registerAlias", p.State.NewFunction(p.pluginAlias))
+	p.State.SetGlobal("runeAlias", p.State.NewFunction(p.pluginAlias))
 	// p.State.SetGlobal("unregisterAction", p.unregisterAction)
 	// p.State.SetGlobal("unregisterAlias", p.unregisterAlias)
 
@@ -70,6 +77,8 @@ func (p *Plugin) Load() error {
 		p.State.Close()
 		return err
 	}
+
+	p.IsActive = true
 
 	return nil
 }

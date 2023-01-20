@@ -288,5 +288,6 @@ func (s *Session) buildCommandHandlers() map[string]Command {
 		"session": &SessionCommand{},
 		"ping":    &PingCommand{},
 		"buffer":  &BufferCommand{},
+		"plugin":  &PluginCommand{},
 	}
 }
