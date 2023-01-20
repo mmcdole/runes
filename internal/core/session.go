@@ -121,12 +121,12 @@ func (s *Session) Start() {
 	go func() {
 		for {
 			select {
-			case input := <-s.pluginEngine.OutCommandChan:
-				s.handlePluginCommand(input)
-			case output := <-s.pluginEngine.OutTextLineChan:
+			case input := <-s.pluginEngine.ReceiveProcessedCommands():
+				s.handlePluginProcessedCmd(input)
+			case input := <-s.pluginEngine.ReceiveCommands():
+				s.handlePluginCmd(input)
+			case output := <-s.pluginEngine.ReceiveTextLines():
 				s.handlePluginOutput(output)
-			case input := <-s.pluginEngine.OutSendChan:
-				s.handlePluginSend(input)
 			}
 		}
 	}()
@@ -144,7 +144,7 @@ func (s *Session) Start() {
 	s.log.Debug("[Session]: Started")
 }
 
-func (s *Session) handlePluginCommand(command string) {
+func (s *Session) handlePluginProcessedCmd(command string) {
 	s.log.Trace("[Session]: [Plugin->Session] Command: %s", strings.TrimSpace(command))
 
 	// Foward processed commands from the PluginEngine to the Proxy
@@ -153,7 +153,7 @@ func (s *Session) handlePluginCommand(command string) {
 	s.proxyConnection.Input() <- command
 }
 
-func (s *Session) handlePluginOutput(output plugin.BufferOutput) {
+func (s *Session) handlePluginOutput(output types.BufferOutput) {
 	s.log.Trace("[Session]: [Plugin->Session] Text: %s", strings.TrimSpace(output.Line))
 
 	s.writeBufferLine(output.BufferName, output.Line)
@@ -165,7 +165,7 @@ func (s *Session) handleProxyOutput(output string) {
 	s.log.Trace("[Session]: [Proxy->Session]: Text: %s", strings.TrimSpace(output))
 
 	s.log.Trace("[Session]: [Session->Plugin] Text: %s", strings.TrimSpace(output))
-	s.pluginEngine.InTextLineChan <- output
+	s.pluginEngine.EnqueueText(output)
 }
 
 func (s *Session) handleClientInput(input *types.ClientCommand) {
@@ -173,7 +173,7 @@ func (s *Session) handleClientInput(input *types.ClientCommand) {
 	s.handleInput(input)
 }
 
-func (s *Session) handlePluginSend(input string) {
+func (s *Session) handlePluginCmd(input string) {
 	// Plugin send() calls have generated new commands to be processed
 	s.log.Trace("[Session]: [Plugin->Session] Command (Send): %s", strings.TrimSpace(input))
 
@@ -198,16 +198,15 @@ func (s *Session) handleInput(input *types.ClientCommand) {
 				Client: input.Client,
 			}
 			// Check if the command is a runes command, otherwise send to plugin engine
-			if ok := s.handleCommand(cc); !ok {
+			if ok := s.handleSessionCmd(cc); !ok {
 				s.log.Trace("[Session]: [Session->Plugin] Command: %s", strings.TrimSpace(cmd))
-				s.pluginEngine.InCommandChan <- cmd
+				s.pluginEngine.EnqueueCommand(cmd)
 			}
 		}
 	} else {
 		// Input was not a command ending in newline, pass through input to server
 		s.log.Trace("[Session]: [Session->Proxy] Command (Passthrough): %s", input.Text)
 		s.proxyConnection.Input() <- input.Text
-		// s.pluginEngine.InCommandChan <- input.Text
 	}
 }
 
@@ -250,7 +249,7 @@ func (s *Session) writeBufferLine(bufferName string, line string) {
 }
 
 // Handle built-in commands otherwise, return false
-func (s *Session) handleCommand(input *types.ClientCommand) bool {
+func (s *Session) handleSessionCmd(input *types.ClientCommand) bool {
 	cmdPrefix := s.config.Core.CommandPrefix
 
 	// Command has configured prefix?

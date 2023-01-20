@@ -1,5 +1,10 @@
 package types
 
+type BufferOutput struct {
+	Line       string
+	BufferName string
+}
+
 type ClientCommand struct {
 	Client Connection
 	Text   string
