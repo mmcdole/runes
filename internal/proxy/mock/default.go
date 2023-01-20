@@ -25,8 +25,11 @@ func NewDefaultProxy(logger util.Logger) *DefaultProxy {
 
 func (ds *DefaultProxy) Connect() error {
 	go func() {
-		for input := range ds.inputChan {
-			ds.handleCommand(input)
+		for {
+			select {
+			case input := <-ds.inputChan:
+				ds.handleCommand(input)
+			}
 		}
 	}()
 
@@ -62,7 +65,7 @@ func (ds *DefaultProxy) handleCommand(input string) {
 }
 
 func (ds *DefaultProxy) sendText(text string) {
-	ds.logger.Trace("[DefaultProxy]: Text Out: %s len: %d cap: %d", strings.TrimSpace(text), len(ds.outputChan), cap(ds.outputChan))
+	ds.logger.Trace("[DefaultProxy]: Text Out: %s", strings.TrimSpace(text))
 
 	ds.outputChan <- text
 }

@@ -122,17 +122,11 @@ func (s *Session) Start() {
 		for {
 			select {
 			case input := <-s.pluginEngine.OutCommandChan:
-				s.log.Trace("[Session]: Handling Plugin Command")
 				s.handlePluginCommand(input)
-				s.log.Trace("[Session]: Handled Plugin Command")
 			case output := <-s.pluginEngine.OutTextLineChan:
-				s.log.Trace("[Session]: Handling Plugin Text")
 				s.handlePluginOutput(output)
-				s.log.Trace("[Session]: Handled Plugin Text")
 			case input := <-s.pluginEngine.OutSendChan:
-				s.log.Trace("[Session]: Handling Plugin Send")
 				s.handlePluginSend(input)
-				s.log.Trace("[Session]: Handled Plugin Send")
 			}
 		}
 	}()

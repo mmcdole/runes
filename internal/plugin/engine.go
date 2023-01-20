@@ -73,13 +73,9 @@ func (pe *PluginEngine) Start() {
 		for {
 			select {
 			case command := <-pe.InCommandChan:
-				pe.logger.Trace("[PluginEngine] Handling Command")
 				pe.handleCommand(command)
-				pe.logger.Trace("[PluginEngine] Handled Command")
 			case line := <-pe.InTextLineChan:
-				pe.logger.Trace("[PluginEngine] Handling Text")
 				pe.handleTextLine(line)
-				pe.logger.Trace("[PluginEngine] Handled Text")
 			}
 		}
 	}()
