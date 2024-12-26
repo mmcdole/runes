@@ -1,0 +1,38 @@
+{
+  "tests": [
+    {
+      "name": "Basic Trigger",
+      "setup_lua": "trigger.add('hp_low', 'HP: (%d+)/100', function(matches) runes.send('hp=' .. matches[1]) end)",
+      "output": "HP: 30/100",
+      "expected_commands": ["hp=30"]
+    },
+    {
+      "name": "Multiple Captures",
+      "setup_lua": "trigger.add('stats', 'Stats: (%d+)/(%d+)', function(matches) runes.send('stats=' .. matches[1] .. ',' .. matches[2]) end)",
+      "output": "Stats: 45/100",
+      "expected_commands": ["stats=45,100"]
+    },
+    {
+      "name": "Non-Matching Pattern",
+      "setup_lua": "trigger.add('hp_low', 'HP: (%d+)/100', function(matches) runes.send('hp=' .. matches[1]) end)",
+      "output": "HP: full",
+      "expected_commands": []
+    },
+    {
+      "name": "Multiple Triggers Same Input",
+      "setup_lua": [
+        "trigger.add('hp_low', 'HP: (%d+)/100', function(matches) runes.send('low=' .. matches[1]) end)",
+        "trigger.add('hp_critical', 'HP: (%d+)/100', function(matches) if tonumber(matches[1]) < 20 then runes.send('crit=' .. matches[1]) end end)"
+      ],
+      "output": "HP: 15/100",
+      "expected_commands": ["low=15", "crit=15"]
+    },
+    {
+      "name": "Trigger with User Input",
+      "setup_lua": "trigger.add('hp_low', 'HP: (%d+)/100', function(matches) runes.send('hp=' .. matches[1]) end)",
+      "input": "look",
+      "output": "HP: 45/100",
+      "expected_commands": ["look", "hp=45"]
+    }
+  ]
+}

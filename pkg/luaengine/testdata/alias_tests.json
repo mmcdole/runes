@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Basic Alias",
+      "setup_lua": "alias.add('n', 'north')",
+      "input": "n",
+      "expected_commands": ["north"]
+    },
+    {
+      "name": "Nested Aliases",
+      "setup_lua": [
+        "alias.add('7w', 'w;w;w;w;w;w;w')",
+        "alias.add('castle', 's;7w;enter castle')"
+      ],
+      "input": "castle",
+      "expected_commands": [
+        "s",
+        "w", "w", "w", "w", "w", "w", "w",
+        "enter castle"
+      ]
+    },
+    {
+      "name": "Alias with Function",
+      "setup_lua": "alias.add('greet', function() runes.send('say Hello, world!') end)",
+      "input": "greet",
+      "expected_commands": ["say Hello, world!"]
+    }
+  ]
+} 
