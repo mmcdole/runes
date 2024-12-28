@@ -8,7 +8,6 @@ local triggers = {}
 -- Add a new trigger
 function trigger.add(name, pattern, callback)
     if type(callback) ~= "function" then
-        runes.debug(string.format("Error: Invalid callback type for trigger %q", name))
         return
     end
 
@@ -17,7 +16,6 @@ function trigger.add(name, pattern, callback)
         pattern = pattern,
         callback = callback
     })
-    runes.debug(string.format("Trigger added: %q", name))
 end
 
 -- Remove a trigger by name
@@ -25,7 +23,6 @@ function trigger.remove(name)
     for i, trigger in ipairs(triggers) do
         if trigger.name == name then
             table.remove(triggers, i)
-            runes.debug(string.format("Trigger removed: %q", name))
             return
         end
     end

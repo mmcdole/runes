@@ -1,17 +1,7 @@
 -- core/command.lua
-command = {}  -- Declare global command table
-
-local commandQueue = {}  -- Private state
+local commandQueue = {}
 local commandSeparator = commandSeparator or ";"
 
--- Redefine mud.send to use the command system
-function runes.send(cmd)  -- Rename parameter to avoid shadowing
-    if cmd then
-        command.enqueue(cmd)  -- Use global command table
-    end
-end
-
--- Split a command string based on the separator
 local function splitCommand(command)
     local commands = {}
     for cmd in (command..commandSeparator):gmatch("(.-)"..commandSeparator) do
@@ -21,16 +11,12 @@ local function splitCommand(command)
     return commands
 end
 
--- Process a single command
 local function processCommand(command)
     if command ~= "" then
         local aliasFunc = alias.resolve(command)
         if aliasFunc then
-            runes.debug(string.format("Found alias for command: %q", command))
             aliasFunc()
             return {}
-        else
-            runes.debug(string.format("No alias found for command: %q", command))
         end
     end
     
@@ -38,7 +24,6 @@ local function processCommand(command)
     return {}
 end
 
--- Process the command queue
 local function processCommandQueue()
     while #commandQueue > 0 do
         local command = table.remove(commandQueue, 1)
@@ -52,13 +37,16 @@ local function processCommandQueue()
     end
 end
 
-function command.enqueue(command)
-    table.insert(commandQueue, command)
-    processCommandQueue()
+-- Public API
+function runes.send(commandStr)
+    if commandStr then
+        table.insert(commandQueue, commandStr)
+        processCommandQueue()
+    end
 end
 
--- Subscribe to the 'input' event
+-- Subscribe to input events directly
 events.add("input", function(input)
-    runes.debug("[INPUT] " .. input)
-    command.enqueue(input)
+    table.insert(commandQueue, input)
+    processCommandQueue()
 end)
