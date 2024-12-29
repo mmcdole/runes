@@ -21,18 +21,6 @@ events.add("output", function(data)
     return false
 end)
 
--- Handle input
-events.add("raw_input", function(data)
-    -- Process input through alias system
-    local aliasFunc = alias.resolve(data)
-    if aliasFunc then
-        aliasFunc()
-        return true
-    end
-    -- If no alias found, send raw command
-    runes.sendRaw(data)
-    return false
-end)
-
 -- Initialize message
-runes.output("Runes MUD Client initialized", "system") 
+runes.output(C_GREEN .. "Welcome to Runes, the MUD client!" .. C_RESET)
+runes.output("Type /help for a list of available commands")

@@ -58,6 +58,7 @@ func (engine *LuaEngine) Initialize() error {
 		"list_buffers":  engine.bindings.listBuffers,
 		"switch_buffer": engine.bindings.switchBuffer,
 		"sendRaw":       engine.bindings.sendCommand,
+		"quit":          engine.bindings.quit,
 	}
 
 	for name, fn := range bindings {
@@ -69,6 +70,7 @@ func (engine *LuaEngine) Initialize() error {
 		name string
 		path string
 	}{
+		{"defaults", "core/defaults.lua"}, // Most fundamental, others depend on it
 		{"events", "core/events.lua"},     // Most fundamental, others depend on it
 		{"alias", "core/alias.lua"},       // Input and commands depend on this
 		{"input", "core/input.lua"},       // Core input handling

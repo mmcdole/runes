@@ -31,7 +31,7 @@ local function show_command_help(cmd_name)
     local cmd = commands[cmd_name]
     if not cmd then return end
     
-    runes.output(string.format([[
+    runes.output(C_GREEN .. string.format([[
 Command: %s
 Syntax: %s
 %s
@@ -40,14 +40,14 @@ Syntax: %s
         cmd.syntax,
         cmd.description,
         cmd.help or ""
-    ))
+    ) .. C_RESET)
 end
 
 -- Helper function to show just the syntax
 local function show_syntax(cmd_name)
     local cmd = commands[cmd_name]
     if not cmd then return end
-    runes.output("Syntax: " .. cmd.syntax)
+    runes.output(C_GREEN .. "Syntax: " .. cmd.syntax .. C_RESET)
 end
 
 -- Connection management
@@ -62,7 +62,7 @@ alias.add("^/connect%s*(.*)$", function(matches, line)
     
     port = tonumber(port)
     if port < 1 or port > 65535 then
-        runes.output("Error: Port must be between 1 and 65535")
+        runes.output(C_RED .. "Error: Port must be between 1 and 65535" .. C_RESET)
         show_syntax("connect")
         return
     end
@@ -80,9 +80,9 @@ alias.add("^/buffer%s*(.*)$", function(matches, line)
     
     if args == "list" then
         local buffers = mud.list_buffers()
-        runes.output("=== Buffers ===")
+        runes.output(C_GREEN .. "=== Buffers ===" .. C_RESET)
         for _, buf in ipairs(buffers) do
-            runes.output("- " .. buf)
+            runes.output(C_GREEN .. "- " .. buf .. C_RESET)
         end
         return
     end
@@ -103,12 +103,12 @@ alias.add("^/help%s*(.*)$", function(matches, line)
         if commands[cmd_name] then
             show_command_help(cmd_name)
         else
-            runes.output("Unknown command: " .. cmd_name)
+            runes.output(C_GREEN .. "Unknown command: " .. cmd_name .. C_RESET)
         end
         return
     end
     
-    runes.output([[
+    runes.output(C_GREEN .. [[
 Available commands:
   /help [command] - Show help for all commands or a specific command
   /connect        - Connect to a MUD server: /connect <host> <port>
@@ -118,7 +118,7 @@ Available commands:
   /quit           - Quit the client
 
 Type /help <command> for detailed help on a specific command.
-]])
+]] .. C_RESET)
 end)
 
 -- Quit command

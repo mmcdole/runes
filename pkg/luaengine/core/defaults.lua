@@ -1,0 +1,41 @@
+-- Colors
+C_RESET = "\27[0m"
+C_BOLD = "\27[1m"
+C_BLACK = "\27[30m"
+C_RED = "\27[31m"
+C_GREEN = "\27[32m"
+C_YELLOW = "\27[33m"
+C_BLUE = "\27[34m"
+C_MAGENTA = "\27[35m"
+C_CYAN = "\27[36m"
+C_WHITE = "\27[37m"
+
+-- Background colors
+BG_BLACK = "\27[40m"
+BG_RED = "\27[41m"
+BG_GREEN = "\27[42m"
+BG_YELLOW = "\27[43m"
+BG_BLUE = "\27[44m"
+BG_MAGENTA = "\27[45m"
+BG_CYAN = "\27[46m"
+BG_WHITE = "\27[47m"
+
+-- Bright colors
+C_BBLACK = "\27[90m"
+C_BRED = "\27[91m"
+C_BGREEN = "\27[92m"
+C_BYELLOW = "\27[93m"
+C_BBLUE = "\27[94m"
+C_BMAGENTA = "\27[95m"
+C_BCYAN = "\27[96m"
+C_BWHITE = "\27[97m"
+
+-- Background bright colors
+BG_BBLACK = "\27[100m"
+BG_BRED = "\27[101m"
+BG_BGREEN = "\27[102m"
+BG_BYELLOW = "\27[103m"
+BG_BBLUE = "\27[104m"
+BG_BMAGENTA = "\27[105m"
+BG_BCYAN = "\27[106m"
+BG_BWHITE = "\27[107m"
