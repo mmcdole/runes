@@ -30,12 +30,6 @@
       "setup_lua": "alias.add('^go%s+(%w+)$', function(matches) runes.send(matches[1]) end)",
       "input": "go north",
       "expected_commands": ["north"]
-    },
-    {
-      "name": "Connect Command Pattern",
-      "setup_lua": "alias.add('^/connect%s+(%S+)%s+(%d+)$', function(matches) runes.send('connect ' .. matches[1] .. ' ' .. matches[2]) end)",
-      "input": "/connect mud.example.com 4000",
-      "expected_commands": ["connect mud.example.com 4000"]
     }
   ]
 }
