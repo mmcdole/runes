@@ -1,4 +1,4 @@
-package mud
+package client
 
 import (
 	"bytes"

@@ -6,8 +6,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/mmcdole/runes/pkg/client"
 	"github.com/mmcdole/runes/pkg/events"
-	"github.com/mmcdole/runes/pkg/mud"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 	eventProcessor := events.New()
 
 	// Create client with script directory and debug flag
-	client, err := mud.NewClient(eventProcessor, *scriptDir, *debug)
+	client, err := client.NewClient(eventProcessor, *scriptDir, *debug)
 	if err != nil {
 		fmt.Printf("Failed to create client: %v\n", err)
 		os.Exit(1)

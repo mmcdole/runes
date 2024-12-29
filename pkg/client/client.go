@@ -1,4 +1,4 @@
-package mud
+package client
 
 import (
 	"bufio"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/mmcdole/runes/pkg/events"
 	"github.com/mmcdole/runes/pkg/luaengine"
+	"github.com/mmcdole/runes/pkg/protocol/telnet"
 )
 
 // Client handles the core MUD client functionality
@@ -113,7 +114,7 @@ func (c *Client) Connect(host string, port int) error {
 		c.conn.Close()
 	}
 
-	telnetConn, err := NewTelnetConnection(host, port, c.debug)
+	telnetConn, err := telnet.NewTelnetConnection(host, port, c.debug)
 	if err != nil {
 		c.events.Emit(events.Event{
 			Type: events.EventRawOutput,

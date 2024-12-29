@@ -1,4 +1,4 @@
-package mud
+package telnet
 
 import (
 	"bytes"
