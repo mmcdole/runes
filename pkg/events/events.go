@@ -24,6 +24,9 @@ const (
 	EventDebug        EventType = "debug"
 	EventListBuffers  EventType = "list_buffers"
 	EventSwitchBuffer EventType = "switch_buffer"
+
+	// Client lifecycle events
+	EventQuit EventType = "quit" // Request to quit the client
 )
 
 type Event struct {

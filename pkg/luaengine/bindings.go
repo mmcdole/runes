@@ -51,9 +51,6 @@ func (b *luaBindings) disconnect(L *lua.LState) int {
 func (b *luaBindings) output(L *lua.LState) int {
 	text := L.ToString(1)
 	buffer := L.ToString(2)
-	if buffer == "" {
-		buffer = "main"
-	}
 	b.engine.eventSystem.Emit(events.Event{
 		Type: events.EventOutput,
 		Data: struct {
@@ -96,6 +93,14 @@ func (b *luaBindings) switchBuffer(L *lua.LState) int {
 	b.engine.eventSystem.Emit(events.Event{
 		Type: events.EventSwitchBuffer,
 		Data: name,
+	})
+	return 0
+}
+
+// Client lifecycle bindings
+func (b *luaBindings) quit(L *lua.LState) int {
+	b.engine.eventSystem.Emit(events.Event{
+		Type: events.EventQuit,
 	})
 	return 0
 }

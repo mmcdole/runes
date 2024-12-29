@@ -51,6 +51,7 @@ func (c *Client) setupEventHandlers() {
 	c.events.Subscribe(events.EventDisconnect, c.handleDisconnect)
 	c.events.Subscribe(events.EventCommand, c.handleCommand)
 	c.events.Subscribe(events.EventOutput, c.handleOutput)
+	c.events.Subscribe(events.EventQuit, c.handleQuit)
 }
 
 func (c *Client) handleConnect(e events.Event) {
@@ -94,6 +95,11 @@ func (c *Client) handleOutput(e events.Event) {
 		return
 	}
 	c.display.WriteText(data.Text, data.Buffer)
+}
+
+func (c *Client) handleQuit(e events.Event) {
+	c.Close()
+	os.Exit(0)
 }
 
 // IsConnected returns true if the client is connected
@@ -184,11 +190,6 @@ func (c *Client) inputLoop() {
 	for scanner.Scan() {
 		input := scanner.Text()
 
-		if input == "/quit" {
-			c.Close()
-			break
-		}
-
 		// Emit the raw input event for Lua to handle
 		c.events.Emit(events.Event{
 			Type: events.EventRawInput,
@@ -199,8 +200,7 @@ func (c *Client) inputLoop() {
 
 // Close closes the client connection
 func (c *Client) Close() {
-	if c.conn != nil {
-		c.conn.Close()
-		c.connected = false
+	if c.connected {
+		c.Disconnect()
 	}
 }

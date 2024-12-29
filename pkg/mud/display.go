@@ -6,6 +6,10 @@ import (
 	"sync"
 )
 
+const (
+	MainBuffer = "main" // Default buffer for MUD output
+)
+
 type Display struct {
 	output    io.Writer
 	buffers   map[string]*Buffer
@@ -32,11 +36,10 @@ func NewDisplay(output io.Writer) *Display {
 	d := &Display{
 		output:    output,
 		buffers:   make(map[string]*Buffer),
-		current:   "main",
+		current:   MainBuffer,
 		lineCount: 50,
 	}
-	d.buffers["main"] = &Buffer{Name: "main", Visible: true}
-	d.buffers["system"] = &Buffer{Name: "system", Visible: true}
+	d.buffers[MainBuffer] = &Buffer{Name: MainBuffer, Visible: true}
 	return d
 }
 

@@ -11,6 +11,10 @@ local commands = {
         syntax = "/disconnect",
         description = "Disconnect from the current server"
     },
+    quit = {
+        syntax = "/quit",
+        description = "Quit the client"
+    },
     buffer = {
         syntax = "/buffer <list|switch <name>>",
         description = "Buffer management commands",
@@ -111,7 +115,13 @@ Available commands:
   /disconnect     - Disconnect from server
   /buffer list    - List all buffers
   /buffer switch  - Switch to a different buffer
+  /quit           - Quit the client
 
 Type /help <command> for detailed help on a specific command.
 ]])
+end)
+
+-- Quit command
+alias.add("^/quit$", function(matches, line)
+    runes.quit()
 end)
