@@ -2,52 +2,37 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
 	"os"
 	"os/signal"
 
-	"github.com/mmcdole/runes/pkg/luaengine"
+	"github.com/mmcdole/runes/pkg/events"
 	"github.com/mmcdole/runes/pkg/mud"
 )
 
 func main() {
-	// Parse command line flags
-	userScriptDir := flag.String("scripts", "", "Directory containing user scripts")
+	// Define command line flags
+	scriptDir := flag.String("scripts", "", "Directory containing Lua scripts")
+	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
 
-	// Create the Lua engine
-	engine := luaengine.New(luafiles.GetCoreScripts(), *userScriptDir)
+	// Create event processor
+	eventProcessor := events.New()
 
-	// Create and initialize the client
-	client := mud.NewClient(engine)
-
-	// Register the client's API with the engine
-	engine.RegisterAPI(client)
-
-	// Load all scripts
-	if err := engine.LoadScripts(); err != nil {
-		log.Fatalf("Failed to load scripts: %v", err)
+	// Create client with script directory and debug flag
+	client, err := mud.NewClient(eventProcessor, *scriptDir, *debug)
+	if err != nil {
+		fmt.Printf("Failed to create client: %v\n", err)
+		os.Exit(1)
 	}
 
-	// Handle Ctrl+C
+	// Handle Ctrl+C gracefully
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	// Simple input loop
-	go func() {
-		buf := make([]byte, 1024)
-		for {
-			n, err := os.Stdin.Read(buf)
-			if err != nil {
-				log.Printf("Error reading input: %v", err)
-				continue
-			}
-			input := string(buf[:n])
-			client.HandleInput(input)
-		}
-	}()
+	// Wait for interrupt signal
+	<-c
 
-	<-c // Wait for Ctrl+C
-	log.Println("\nShutting down...")
-	client.Disconnect()
+	// Cleanup
+	client.Close()
 }

@@ -11,10 +11,14 @@ const (
 	EventRawInput  EventType = "raw_input"  // From client
 	EventRawOutput EventType = "raw_output" // From MUD
 
+	// Connection events
+	EventConnect      EventType = "connect"      // Request to connect
+	EventConnected    EventType = "connected"    // Connection established
+	EventDisconnect   EventType = "disconnect"   // Request to disconnect
+	EventDisconnected EventType = "disconnected" // Connection closed
+
 	// Processed events (from LuaEngine)
 	EventCommand      EventType = "command"
-	EventConnect      EventType = "connect"
-	EventDisconnect   EventType = "disconnect"
 	EventOutput       EventType = "output"
 	EventLog          EventType = "log"
 	EventDebug        EventType = "debug"

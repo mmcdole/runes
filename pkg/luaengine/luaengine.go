@@ -14,18 +14,21 @@ import (
 //go:embed core/*.lua
 var coreLuaScripts embed.FS
 
+// CoreScripts returns the embedded filesystem containing core Lua scripts
+func CoreScripts() fs.FS {
+	return coreLuaScripts
+}
+
 type LuaEngine struct {
 	L             *lua.LState
-	coreScriptsFS fs.FS
 	userScriptDir string
 	eventSystem   *events.EventProcessor
 	bindings      *luaBindings
 }
 
-func New(coreScriptsFS fs.FS, userScriptDir string, eventSystem *events.EventProcessor) *LuaEngine {
+func New(userScriptDir string, eventSystem *events.EventProcessor) *LuaEngine {
 	engine := &LuaEngine{
 		L:             lua.NewState(),
-		coreScriptsFS: coreScriptsFS,
 		userScriptDir: userScriptDir,
 		eventSystem:   eventSystem,
 	}
@@ -76,7 +79,7 @@ func (engine *LuaEngine) Initialize() error {
 	}
 
 	for _, module := range coreModules {
-		content, err := fs.ReadFile(engine.coreScriptsFS, module.path)
+		content, err := fs.ReadFile(coreLuaScripts, module.path)
 		if err != nil {
 			return fmt.Errorf("error reading %s: %w", module.path, err)
 		}
@@ -95,6 +98,7 @@ func (engine *LuaEngine) Close() {
 
 // Raw event handlers that bridge between Go events and Lua events
 func (engine *LuaEngine) handleRawInput(event events.Event) {
+	//fmt.Printf("[DEBUG] LuaEngine got raw input: %q\n", event.Data.(string))
 	engine.emitLuaEvent("input", event.Data.(string))
 }
 
@@ -117,7 +121,7 @@ func (engine *LuaEngine) emitLuaEvent(eventName string, eventData string) {
 		return
 	}
 
-	fmt.Printf("[DEBUG] Calling Lua events.emit(%q, %q)\n", eventName, eventData)
+	//	fmt.Printf("[DEBUG] Calling Lua events.emit(%q, %q)\n", eventName, eventData)
 	L.Push(emitFn)
 	L.Push(lua.LString(eventName))
 	L.Push(lua.LString(eventData))

@@ -2,15 +2,15 @@
   "tests": [
     {
       "name": "Basic Alias",
-      "setup_lua": "alias.add('n', 'north')",
+      "setup_lua": "alias.add('^n$', 'north')",
       "input": "n",
       "expected_commands": ["north"]
     },
     {
       "name": "Nested Aliases",
       "setup_lua": [
-        "alias.add('7w', 'w;w;w;w;w;w;w')",
-        "alias.add('castle', 's;7w;enter castle')"
+        "alias.add('^7w$', 'w;w;w;w;w;w;w')",
+        "alias.add('^castle$', 's;7w;enter castle')"
       ],
       "input": "castle",
       "expected_commands": [
@@ -21,9 +21,21 @@
     },
     {
       "name": "Alias with Function",
-      "setup_lua": "alias.add('greet', function() runes.send('say Hello, world!') end)",
+      "setup_lua": "alias.add('^greet$', function() runes.send('say Hello, world!') end)",
       "input": "greet",
       "expected_commands": ["say Hello, world!"]
+    },
+    {
+      "name": "Regex Pattern Alias",
+      "setup_lua": "alias.add('^go%s+(%w+)$', function(matches) runes.send(matches[1]) end)",
+      "input": "go north",
+      "expected_commands": ["north"]
+    },
+    {
+      "name": "Connect Command Pattern",
+      "setup_lua": "alias.add('^/connect%s+(%S+)%s+(%d+)$', function(matches) runes.send('connect ' .. matches[1] .. ' ' .. matches[2]) end)",
+      "input": "/connect mud.example.com 4000",
+      "expected_commands": ["connect mud.example.com 4000"]
     }
   ]
-} 
+}

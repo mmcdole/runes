@@ -4,8 +4,7 @@ import (
 	"io"
 )
 
+// Connection represents a connection to a MUD server
 type Connection interface {
-	Connect(host string, port int) error
-	Close() error
-	io.ReadWriter
+	io.ReadWriteCloser
 }

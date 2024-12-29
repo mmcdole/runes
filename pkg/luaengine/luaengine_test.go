@@ -60,7 +60,7 @@ func setupTest(t *testing.T) (*LuaEngine, *mockEventCollector, func()) {
 	eventSystem.Subscribe(events.EventConnect, collector.collect)
 	eventSystem.Subscribe(events.EventDisconnect, collector.collect)
 
-	engine := New(coreLuaScripts, tempDir, eventSystem)
+	engine := New(tempDir, eventSystem)
 	if err := engine.Initialize(); err != nil {
 		t.Fatal("Failed to initialize engine:", err)
 	}

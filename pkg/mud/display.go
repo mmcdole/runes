@@ -14,6 +14,14 @@ type Display struct {
 	mu        sync.RWMutex
 }
 
+func (d *Display) Write(p []byte) (n int, err error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	fmt.Fprintln(d.output, string(p))
+	return len(p), nil
+}
+
 type Buffer struct {
 	Name    string
 	Lines   []string
@@ -32,7 +40,7 @@ func NewDisplay(output io.Writer) *Display {
 	return d
 }
 
-func (d *Display) Write(text string, buffer string) {
+func (d *Display) WriteText(text string, buffer string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 

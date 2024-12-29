@@ -1,61 +1,154 @@
 package mud
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/mmcdole/runes/pkg/events"
+	"github.com/mmcdole/runes/pkg/luaengine"
 )
 
+// Client handles the core MUD client functionality
 type Client struct {
-	conn      Connection
-	engine    Engine
-	display   *Display
-	connected bool
-	cmdQueue  chan string
+	conn          Connection
+	engine        *luaengine.LuaEngine
+	events        *events.EventProcessor
+	display       *Display
+	lineProcessor *LineProcessor
+	connected     bool
+	debug         bool
 }
 
-type Engine interface {
-	EmitEvent(name string, data interface{})
-}
-
-func NewClient(engine Engine) *Client {
-	client := &Client{
-		conn:    NewTelnetConnection(),
-		engine:  engine,
-		display: NewDisplay(os.Stdout),
+// NewClient creates a new MUD client
+func NewClient(eventProcessor *events.EventProcessor, userScriptDir string, debug bool) (*Client, error) {
+	// Create the Lua engine with the shared event processor
+	engine := luaengine.New(userScriptDir, eventProcessor)
+	if err := engine.Initialize(); err != nil {
+		return nil, fmt.Errorf("failed to initialize lua engine: %v", err)
 	}
 
-	return client
+	client := &Client{
+		engine:        engine,
+		events:        eventProcessor,
+		display:       NewDisplay(os.Stdout),
+		lineProcessor: NewLineProcessor(),
+		debug:         debug,
+	}
+
+	// Set up event handlers
+	client.setupEventHandlers()
+
+	// Start input handling
+	go client.inputLoop()
+
+	return client, nil
 }
 
-func (c *Client) SendCommand(cmd string) {
-	if !c.connected {
-		c.engine.EmitEvent("error", "Not connected")
+func (c *Client) setupEventHandlers() {
+	c.events.Subscribe(events.EventConnect, c.handleConnect)
+	c.events.Subscribe(events.EventDisconnect, c.handleDisconnect)
+	c.events.Subscribe(events.EventCommand, c.handleCommand)
+	c.events.Subscribe(events.EventOutput, c.handleOutput)
+}
+
+func (c *Client) handleConnect(e events.Event) {
+	data, ok := e.Data.(struct {
+		Host string
+		Port int
+	})
+	if !ok {
 		return
 	}
-	if _, err := c.conn.Write([]byte(cmd + "\n")); err != nil {
-		c.engine.EmitEvent("error", fmt.Sprintf("failed to send command: %v", err))
+
+	if err := c.Connect(data.Host, data.Port); err == nil {
+		// Only emit Connected event on success
+		c.events.Emit(events.Event{
+			Type: events.EventConnected,
+			Data: data,
+		})
 	}
 }
 
+func (c *Client) handleDisconnect(e events.Event) {
+	if err := c.Disconnect(); err == nil {
+		c.events.Emit(events.Event{
+			Type: events.EventDisconnected,
+		})
+	}
+}
+
+func (c *Client) handleCommand(e events.Event) {
+	if cmd, ok := e.Data.(string); ok {
+		c.SendCommand(cmd)
+	}
+}
+
+func (c *Client) handleOutput(e events.Event) {
+	data, ok := e.Data.(struct {
+		Text   string
+		Buffer string
+	})
+	if !ok {
+		return
+	}
+	c.display.WriteText(data.Text, data.Buffer)
+}
+
+// IsConnected returns true if the client is connected
+func (c *Client) IsConnected() bool {
+	return c.connected
+}
+
+// Connect connects to a MUD server
 func (c *Client) Connect(host string, port int) error {
-	if err := c.conn.Connect(host, port); err != nil {
+	if c.conn != nil {
+		c.conn.Close()
+	}
+
+	telnetConn, err := NewTelnetConnection(host, port, c.debug)
+	if err != nil {
+		c.events.Emit(events.Event{
+			Type: events.EventRawOutput,
+			Data: fmt.Sprintf("Failed to connect: %v", err),
+		})
 		return err
 	}
+
+	c.conn = telnetConn
 	c.connected = true
+
+	// Start reading from connection
 	go c.readLoop()
-	c.engine.EmitEvent("connect", "")
+
 	return nil
 }
 
+// Disconnect closes the connection to the MUD server
 func (c *Client) Disconnect() error {
 	if !c.connected {
 		return nil
 	}
 	c.connected = false
-	err := c.conn.Close()
-	c.engine.EmitEvent("disconnect", "")
+	return c.conn.Close()
+}
+
+// SendCommand sends a command to the MUD server
+func (c *Client) SendCommand(cmd string) error {
+	if !c.connected {
+		return fmt.Errorf("not connected")
+	}
+	_, err := c.conn.Write([]byte(cmd + "\n"))
 	return err
+}
+
+// Send sends data to the server
+func (c *Client) Send(data string) {
+	if !c.connected {
+		return
+	}
+	c.conn.Write([]byte(data + "\n"))
 }
 
 func (c *Client) readLoop() {
@@ -64,18 +157,50 @@ func (c *Client) readLoop() {
 		n, err := c.conn.Read(buf)
 		if err != nil {
 			if err != io.EOF {
-				c.engine.EmitEvent("error", err.Error())
+				fmt.Printf("Read error: %v\n", err)
 			}
 			c.connected = false
-			c.engine.EmitEvent("disconnect", "")
+			c.events.Emit(events.Event{
+				Type: events.EventDisconnected,
+			})
 			return
 		}
+
 		if n > 0 {
-			c.engine.EmitEvent("output", string(buf[:n]))
+			// Process the raw data into lines
+			lines := c.lineProcessor.Write(buf[:n])
+			for _, line := range lines {
+				c.events.Emit(events.Event{
+					Type: events.EventRawOutput,
+					Data: line,
+				})
+			}
 		}
 	}
 }
 
-func (c *Client) HandleInput(input string) {
-	c.engine.EmitEvent("input", input)
+func (c *Client) inputLoop() {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		input := scanner.Text()
+
+		if input == "/quit" {
+			c.Close()
+			break
+		}
+
+		// Emit the raw input event for Lua to handle
+		c.events.Emit(events.Event{
+			Type: events.EventRawInput,
+			Data: input,
+		})
+	}
+}
+
+// Close closes the client connection
+func (c *Client) Close() {
+	if c.conn != nil {
+		c.conn.Close()
+		c.connected = false
+	}
 }
