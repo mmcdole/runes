@@ -131,7 +131,8 @@ func executeTest(t *testing.T, feature string, tt testCase) {
 
 		if tt.ExpectedEvents != nil {
 			assertEvents(t, collector, tt.ExpectedEvents)
-		} else if tt.ExpectedCommands != nil {
+		}
+		if tt.ExpectedCommands != nil {
 			assertCommands(t, collector, tt.ExpectedCommands)
 		}
 	})

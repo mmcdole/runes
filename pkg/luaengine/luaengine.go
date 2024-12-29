@@ -66,11 +66,13 @@ func (engine *LuaEngine) Initialize() error {
 		name string
 		path string
 	}{
-		{"events", "core/events.lua"},
-		{"command", "core/command.lua"},
-		{"alias", "core/alias.lua"},
-		{"trigger", "core/trigger.lua"},
-		{"mud", "core/mud.lua"},
+		{"events", "core/events.lua"},     // Most fundamental, others depend on it
+		{"alias", "core/alias.lua"},       // Input and commands depend on this
+		{"input", "core/input.lua"},       // Core input handling
+		{"trigger", "core/trigger.lua"},   // Output processing
+		{"timer", "core/timer.lua"},       // Timer system
+		{"commands", "core/commands.lua"}, // Default commands, depends on alias
+		{"init", "core/init.lua"},         // Final initialization
 	}
 
 	for _, module := range coreModules {

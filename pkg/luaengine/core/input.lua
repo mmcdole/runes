@@ -1,4 +1,4 @@
--- core/command.lua
+-- core/input.lua
 local commandQueue = {}
 local commandSeparator = commandSeparator or ";"
 
@@ -37,16 +37,20 @@ local function processCommandQueue()
     end
 end
 
--- Public API
-function runes.send(commandStr)
+local function enqueue(commandStr)
     if commandStr then
         table.insert(commandQueue, commandStr)
         processCommandQueue()
     end
 end
 
+-- Public API
+function runes.send(commandStr)
+    enqueue(commandStr)
+end
+
 -- Subscribe to input events directly
 events.add("input", function(input)
     table.insert(commandQueue, input)
     processCommandQueue()
-end)
+end) 
