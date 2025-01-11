@@ -61,9 +61,10 @@ const (
 
 // shouldFilter returns true if the byte should be filtered from output
 func shouldFilter(b byte) bool {
-	// Filter out control characters except for text formatting
+	// Filter out control characters except for text formatting and escape sequences
 	return b < 0x20 && b != charBEL && b != charBS && b != charHT &&
-		b != charLF && b != charVT && b != charFF && b != charCR
+		b != charLF && b != charVT && b != charFF && b != charCR &&
+		b != 0x1B  // Preserve escape character for ANSI sequences
 }
 
 // OptionState represents the state of a telnet option

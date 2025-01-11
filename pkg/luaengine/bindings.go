@@ -10,6 +10,22 @@ type luaBindings struct {
 	engine *LuaEngine
 }
 
+// getBindingsMap returns a map of all Lua function bindings
+func (b *luaBindings) getBindingsMap() map[string]lua.LGFunction {
+	return map[string]lua.LGFunction{
+		"connect":       b.connect,
+		"disconnect":    b.disconnect,
+		"output":        b.output,
+		"log":           b.log,
+		"debug":         b.debug,
+		"version":       b.version,
+		"list_buffers":  b.listBuffers,
+		"switch_buffer": b.switchBuffer,
+		"sendRaw":       b.sendCommand,
+		"quit":          b.quit,
+	}
+}
+
 // Core system bindings
 func (b *luaBindings) debug(L *lua.LState) int {
 	text := L.ToString(1)
