@@ -75,3 +75,13 @@ function alias.remove(pattern)
         aliases[pattern] = nil
     end
 end
+
+--- Returns a list of all defined aliases
+-- @return table A list of alias patterns
+function alias.list()
+    local result = {}
+    for pattern, _ in pairs(aliases) do
+        table.insert(result, pattern)
+    end
+    return result
+end

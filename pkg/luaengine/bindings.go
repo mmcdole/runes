@@ -21,8 +21,9 @@ func (b *luaBindings) getBindingsMap() map[string]lua.LGFunction {
 		"version":       b.version,
 		"list_buffers":  b.listBuffers,
 		"switch_buffer": b.switchBuffer,
-		"sendRaw":       b.sendCommand,
+		"send_raw":      b.sendCommand,
 		"quit":          b.quit,
+		"load_script":   b.loadScript,
 	}
 }
 
@@ -119,4 +120,18 @@ func (b *luaBindings) quit(L *lua.LState) int {
 		Type: events.EventQuit,
 	})
 	return 0
+}
+
+// Script loading binding
+func (b *luaBindings) loadScript(L *lua.LState) int {
+	path := L.ToString(1)
+	err := b.engine.loadUserScript(path)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	return 1
 }

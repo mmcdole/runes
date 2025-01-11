@@ -20,7 +20,7 @@ local function processCommand(command)
         end
     end
     
-    runes.sendRaw(command)
+    runes.send_raw(command)
     return {}
 end
 

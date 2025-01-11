@@ -161,3 +161,30 @@ func (engine *LuaEngine) emitLuaEvent(eventName string, eventData string) {
 		fmt.Printf("[ERROR] Failed to emit Lua event %s: %v\n", eventName, err)
 	}
 }
+
+// loadUserScript loads a single Lua script file
+func (engine *LuaEngine) loadUserScript(path string) error {
+	// If path is not absolute, make it relative to userScriptDir
+	if !filepath.IsAbs(path) && engine.userScriptDir != "" {
+		path = filepath.Join(engine.userScriptDir, path)
+	}
+
+	// Check if file exists and is a .lua file
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("error accessing script %s: %w", path, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("path %s is a directory, expected a .lua file", path)
+	}
+	if filepath.Ext(path) != ".lua" {
+		return fmt.Errorf("file %s is not a .lua file", path)
+	}
+
+	// Load and execute the script
+	if err := engine.L.DoFile(path); err != nil {
+		return fmt.Errorf("error loading Lua file %s: %w", path, err)
+	}
+
+	return nil
+}
