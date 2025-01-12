@@ -30,7 +30,6 @@ pkg/
 - `EventCommand`: Processed user input after Lua engine handling
   - Aliases expanded
   - Commands interpreted
-  - Scripts executed
 
 #### Output-Related Events
 - `EventRawOutput`: Raw server output from telnet
@@ -38,46 +37,10 @@ pkg/
   - Triggers processed
   - Text highlighted
   - Lines gagged/filtered
-  - ANSI processed
 
 #### System Events
 - `EventConnect`/`EventDisconnect`: Connection management
 - `EventQuit`: Client shutdown
-
-### Event Flow Diagrams
-
-#### Input Processing Flow
-```
-User Input                 Lua Processing           Output
-    |                           |                     |
-    v                           v                     v
-+--------+  EventRawInput  +----------+  EventCommand  +---------+
-|  TUI   |--------------->| Lua      |--------------->| Client  |
-|        |                | Engine   |                |         |
-+--------+                |          |                +---------+
-                         | - Aliases |                     |
-                         | - Scripts |                     |
-                         +----------+                      v
-                                                    [Execute Command]
-```
-
-#### Output Processing Flow
-```
-Server Output             Lua Processing              Display
-    |                          |                        |
-    v                          v                        v
-+---------+  EventRawOutput +---------+   EventOutput  +----------+
-| Telnet  |---------------->| Lua     |--------------->| Viewport |
-|         |                 | Engine  |                |          |
-+---------+                 |         |                +----------+
-                           |Triggers->|                     ^
-                           |Gags   ->|                     |
-                           |Colors ->|                     |
-                           +---------+                     |
-                                |                         |
-                                v                         |
-                          [Trigger Actions]---------------+
-```
 
 ### Event Processing Details
 
