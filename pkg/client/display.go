@@ -73,16 +73,24 @@ func (d *Display) SwitchBuffer(name string) {
 }
 
 func (d *Display) ShowBufferContext() {
-	buf := d.buffers[d.current]
-	start := 0
-	if len(buf.Lines) > d.lineCount {
-		start = len(buf.Lines) - d.lineCount
-	}
+    d.ShowBuffer(d.current, true)
+}
 
-	fmt.Fprintf(d.output, "\n=== Buffer: %s ===\n", d.current)
-	for _, line := range buf.Lines[start:] {
-		fmt.Fprintln(d.output, line)
-	}
+// ShowBuffer displays the contents of the specified buffer
+// If showHeader is true, it will show the "=== Buffer: name ===" header
+func (d *Display) ShowBuffer(name string, showHeader bool) {
+    buf := d.buffers[name]
+    start := 0
+    if len(buf.Lines) > d.lineCount {
+        start = len(buf.Lines) - d.lineCount
+    }
+
+    if showHeader {
+        fmt.Fprintf(d.output, "\n=== Buffer: %s ===\n", name)
+    }
+    for _, line := range buf.Lines[start:] {
+        fmt.Fprintln(d.output, line)
+    }
 }
 
 func (d *Display) ListBuffers() []string {

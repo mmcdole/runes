@@ -24,22 +24,24 @@ type Client struct {
 
 // NewClient creates a new MUD client
 func NewClient(eventProcessor *events.EventProcessor, userScriptDir string, debug bool) (*Client, error) {
-	// Create the Lua engine with the shared event processor
-	engine := luaengine.New(userScriptDir, eventProcessor)
-	if err := engine.Initialize(); err != nil {
-		return nil, fmt.Errorf("failed to initialize lua engine: %v", err)
-	}
-
+	// Initialization order is critical:
+	// Event handlers must be set up before Lua engine initialization
+	// to capture all events emitted during core script loading
+	
 	client := &Client{
-		engine:        engine,
 		events:        eventProcessor,
 		display:       NewDisplay(os.Stdout),
 		lineProcessor: NewLineProcessor(),
 		debug:         debug,
 	}
 
-	// Set up event handlers
 	client.setupEventHandlers()
+
+	engine := luaengine.New(userScriptDir, eventProcessor)
+	if err := engine.Initialize(); err != nil {
+		return nil, fmt.Errorf("failed to initialize lua engine: %v", err)
+	}
+	client.engine = engine
 
 	// Start input handling
 	go client.inputLoop()
