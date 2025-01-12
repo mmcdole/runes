@@ -1,11 +1,11 @@
 package client
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mmcdole/runes/pkg/events"
 	"github.com/mmcdole/runes/pkg/luaengine"
 	"github.com/mmcdole/runes/pkg/protocol/telnet"
@@ -16,10 +16,12 @@ type Client struct {
 	conn          Connection
 	engine        *luaengine.LuaEngine
 	events        *events.EventProcessor
-	display       *Display
+	bufferMgr     *BufferManager
 	lineProcessor *LineProcessor
 	connected     bool
 	debug         bool
+	program       *tea.Program
+	model         *model
 }
 
 // NewClient creates a new MUD client
@@ -27,13 +29,18 @@ func NewClient(eventProcessor *events.EventProcessor, userScriptDir string, debu
 	// Initialization order is critical:
 	// Event handlers must be set up before Lua engine initialization
 	// to capture all events emitted during core script loading
-	
+
 	client := &Client{
 		events:        eventProcessor,
-		display:       NewDisplay(os.Stdout),
+		bufferMgr:     NewBufferManager(),
 		lineProcessor: NewLineProcessor(),
 		debug:         debug,
 	}
+
+	// Initialize TUI first
+	model := NewModel(client, client.bufferMgr)
+	client.model = model
+	client.program = tea.NewProgram(model, tea.WithAltScreen())
 
 	client.setupEventHandlers()
 
@@ -42,9 +49,6 @@ func NewClient(eventProcessor *events.EventProcessor, userScriptDir string, debu
 		return nil, fmt.Errorf("failed to initialize lua engine: %v", err)
 	}
 	client.engine = engine
-
-	// Start input handling
-	go client.inputLoop()
 
 	return client, nil
 }
@@ -97,7 +101,8 @@ func (c *Client) handleOutput(e events.Event) {
 	if !ok {
 		return
 	}
-	c.display.WriteText(data.Text, data.Buffer)
+	c.bufferMgr.AddLine(data.Text, data.Buffer)
+	c.model.UpdateContent()
 }
 
 func (c *Client) handleQuit(e events.Event) {
@@ -188,17 +193,20 @@ func (c *Client) readLoop() {
 	}
 }
 
-func (c *Client) inputLoop() {
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		input := scanner.Text()
+// New method to handle input from the TUI
+func (c *Client) HandleInput(input string) {
+	c.events.Emit(events.Event{
+		Type: events.EventRawInput,
+		Data: input,
+	})
+}
 
-		// Emit the raw input event for Lua to handle
-		c.events.Emit(events.Event{
-			Type: events.EventRawInput,
-			Data: input,
-		})
+// Replace inputLoop with TUI program
+func (c *Client) Run() error {
+	if err := c.program.Start(); err != nil {
+		return fmt.Errorf("error running program: %v", err)
 	}
+	return nil
 }
 
 // Close closes the client connection

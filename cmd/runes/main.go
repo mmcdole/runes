@@ -26,13 +26,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Start the TUI
+	if err := client.Run(); err != nil {
+		fmt.Printf("Failed to run client: %v\n", err)
+		client.Close()
+		os.Exit(1)
+	}
+
 	// Handle Ctrl+C gracefully
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
 	// Wait for interrupt signal
-	<-c
+	go func() {
+		<-c
+		client.Close()
+		os.Exit(0)
+	}()
 
-	// Cleanup
-	client.Close()
+	// Keep the main goroutine alive
+	select {}
 }
