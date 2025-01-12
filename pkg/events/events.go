@@ -37,13 +37,30 @@ type Event struct {
 type Handler func(Event)
 
 type EventProcessor struct {
-	mu       sync.RWMutex
-	handlers map[EventType][]Handler
+	eventChan chan Event
+	handlers  map[EventType][]Handler
+	mu        sync.RWMutex
 }
 
 func New() *EventProcessor {
-	return &EventProcessor{
-		handlers: make(map[EventType][]Handler),
+	ep := &EventProcessor{
+		eventChan: make(chan Event, 1024),
+		handlers:  make(map[EventType][]Handler),
+	}
+	// Start the dispatch loop
+	go ep.run()
+	return ep
+}
+
+func (ep *EventProcessor) run() {
+	for event := range ep.eventChan {
+		ep.mu.RLock()
+		handlers := ep.handlers[event.Type]
+		ep.mu.RUnlock()
+
+		for _, h := range handlers {
+			h(event)
+		}
 	}
 }
 
@@ -54,11 +71,5 @@ func (ep *EventProcessor) Subscribe(eventType EventType, handler Handler) {
 }
 
 func (ep *EventProcessor) Emit(event Event) {
-	ep.mu.RLock()
-	handlers := ep.handlers[event.Type]
-	ep.mu.RUnlock()
-
-	for _, handler := range handlers {
-		handler(event)
-	}
+	ep.eventChan <- event
 }

@@ -2,122 +2,192 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
+	"sync"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/gdamore/tcell/v2"
 	"github.com/mmcdole/runes/pkg/client/buffer"
-	"github.com/mmcdole/runes/pkg/client/input"
-	"github.com/mmcdole/runes/pkg/client/viewport"
+	"github.com/rivo/tview"
 )
 
+// TUI represents the terminal user interface
 type TUI struct {
-	viewport    *viewport.ViewportManager
-	input       *input.InputManager
-	buffer      *buffer.Buffer
-	ready       bool
-	config      Config
-	client      Client
+	app        *tview.Application
+	textView   *tview.TextView
+	inputField *tview.InputField
+	buffer     *buffer.Buffer
+	client     Client
+
+	// Mutex for synchronizing buffer access
+	bufferMutex sync.Mutex
+
+	// Channel for serializing output updates
+	outputChan chan string
 }
 
+// Config holds the TUI configuration
 type Config struct {
-	BufferConfig   buffer.BufferConfig
-	ViewportConfig viewport.ViewportConfig
-	InputConfig    input.InputConfig
+	BufferSize int
 }
 
-// Client interface represents the external client that handles actual MUD communication
+// Client interface for handling input and quit events
 type Client interface {
-	HandleInput(string)
+	HandleInput(input string)
 	HandleQuit()
 }
 
+// New creates a new TUI instance
 func New(config Config, client Client) *TUI {
-	buf := buffer.NewBuffer(config.BufferConfig)
-	vp := viewport.NewViewportManager(buf, config.ViewportConfig)
-	inp := input.NewInputManager(config.InputConfig)
+	app := tview.NewApplication()
+	textView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetRegions(true).
+		SetScrollable(true).
+		SetWrap(true)
 
-	return &TUI{
-		viewport: vp,
-		input:    inp,
-		buffer:   buf,
-		config:   config,
-		client:   client,
+	inputField := tview.NewInputField().
+		SetLabel("> ")
+
+	t := &TUI{
+		app:        app,
+		textView:   textView,
+		inputField: inputField,
+		client:     client,
+		buffer:     buffer.NewBuffer(buffer.BufferConfig{MaxLines: config.BufferSize}),
+		outputChan: make(chan string, 1000), // Buffer size to prevent blocking
 	}
-}
 
-func (t *TUI) Init() tea.Cmd {
-	return textinput.Blink
-}
+	// Set up input handling
+	inputField.SetFinishedFunc(func(key tcell.Key) {
+		text := inputField.GetText()
+		if text != "" {
+			line := fmt.Sprintf("> %s\n", text)
+			t.bufferMutex.Lock()
+			t.buffer.Append(line)
+			t.bufferMutex.Unlock()
 
-func (t *TUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		if !t.ready {
-			// First time initialization
-			t.viewport.SetSize(msg.Width, msg.Height-1) // Reserve bottom line for input
-			t.input.SetWidth(msg.Width)
-			t.ready = true
-		} else {
-			// Subsequent resize events
-			t.viewport.SetSize(msg.Width, msg.Height-1)
-			t.input.SetWidth(msg.Width)
+			// UI updates are safe here because we're in the main thread
+			textView.Write([]byte(line))
+			textView.ScrollToEnd()
+			inputField.SetText("")
+			t.client.HandleInput(text)
 		}
-		t.viewport.SetContent()
+	})
 
-	case tea.KeyMsg:
-		if msg.Type == tea.KeyCtrlC {
+	// Layout
+	flex := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(textView, 0, 1, false).
+		AddItem(inputField, 1, 0, true)
+
+	// Set up global key handlers
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyCtrlC:
 			t.client.HandleQuit()
-			return t, tea.Quit
+			app.Stop()
+			return nil
+		case tcell.KeyPgUp:
+			row, _ := textView.GetScrollOffset()
+			textView.ScrollTo(row-1, 0)
+			app.Draw()
+			return nil
+		case tcell.KeyPgDn:
+			row, _ := textView.GetScrollOffset()
+			textView.ScrollTo(row+1, 0)
+			app.Draw()
+			return nil
 		}
-		
-		// Handle input first
-		if input, cmd := t.input.HandleInput(msg); input != "" {
-			// Send to client
-			t.client.HandleInput(input)
-			// Echo to our buffer
-			t.buffer.Append(fmt.Sprintf("> %s", input))
-			t.viewport.SetContent()
-			cmds = append(cmds, cmd)
-		} else if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
-	}
+		return event
+	})
 
-	// Update viewport
-	if _, cmd = t.viewport.Update(msg); cmd != nil {
-		cmds = append(cmds, cmd)
-	}
+	app.SetRoot(flex, true).
+		EnableMouse(true).
+		SetFocus(inputField)
 
-	return t, tea.Batch(cmds...)
+	// Start output processor
+	go t.processOutput()
+
+	return t
 }
 
-func (t *TUI) View() string {
-	if !t.ready {
-		return "\nInitializing..."
-	}
+// Convert ANSI escape sequences to tview color tags
+func convertANSIToTview(text string) string {
+	// ANSI escape sequence pattern
+	pattern := regexp.MustCompile(`\x1b\[([0-9;]*)m`)
 
-	return fmt.Sprintf("%s\n%s",
-		t.viewport.View(),
-		t.input.View())
+	return pattern.ReplaceAllStringFunc(text, func(match string) string {
+		code := pattern.FindStringSubmatch(match)[1]
+		switch code {
+		case "0":
+			return "[-:-:-]" // Reset
+		case "30":
+			return "[black]"
+		case "31":
+			return "[red]"
+		case "32":
+			return "[green]"
+		case "33":
+			return "[yellow]"
+		case "34":
+			return "[blue]"
+		case "35":
+			return "[purple]"
+		case "36":
+			return "[cyan]"
+		case "37":
+			return "[white]"
+		default:
+			return "" // Remove unknown codes
+		}
+	})
 }
 
-// AddLine adds a new line to the buffer and updates the viewport
+// processOutput handles output events serially
+func (t *TUI) processOutput() {
+	for line := range t.outputChan {
+		t.bufferMutex.Lock()
+		t.buffer.Append(line)
+		t.bufferMutex.Unlock()
+
+		t.app.QueueUpdateDraw(func() {
+			// Convert ANSI colors to tview format
+			displayLine := convertANSIToTview(line)
+			t.textView.Write([]byte(displayLine))
+			t.textView.ScrollToEnd()
+		})
+	}
+}
+
+// Run starts the TUI
+func (t *TUI) Run() error {
+	return t.app.Run()
+}
+
+// Stop stops the TUI
+func (t *TUI) Stop() {
+	close(t.outputChan)
+	t.app.Stop()
+}
+
+// AddLine adds a line to the output
 func (t *TUI) AddLine(line string) {
-	t.buffer.Append(line)
-	if t.ready {
-		t.viewport.SetContent()
+	// Ensure newline
+	if line[len(line)-1] != '\n' {
+		line = line + "\n"
 	}
+
+	// Send to output processor
+	t.outputChan <- line
 }
 
-// Clear clears the buffer and updates the viewport
+// Clear clears all output
 func (t *TUI) Clear() {
+	t.bufferMutex.Lock()
 	t.buffer.Clear()
-	if t.ready {
-		t.viewport.SetContent()
-	}
+	t.bufferMutex.Unlock()
+
+	t.app.QueueUpdateDraw(func() {
+		t.textView.Clear()
+	})
 }

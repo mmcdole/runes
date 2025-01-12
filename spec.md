@@ -1,7 +1,7 @@
 # Runes Specification
 
 ## Overview
-Runes is a modern MUD client built in Go with an embedded Lua scripting engine. It features a terminal user interface (TUI) and a dual event-driven architecture where events flow between Go and Lua systems for comprehensive input/output processing.
+Runes is a modern MUD client built in Go with an embedded Lua scripting engine. It features a terminal user interface (TUI) and a sophisticated event-driven architecture that manages bidirectional data flow between the MUD server, Go core, Lua scripting engine, and client interface.
 
 ## Core Architecture
 
@@ -9,213 +9,152 @@ Runes is a modern MUD client built in Go with an embedded Lua scripting engine. 
 
 ```
 pkg/
-├── client/           # Client implementation
-│   ├── buffer/       # Line buffer management
-│   ├── viewport/     # Display viewport
-│   └── tui/         # Terminal UI (Bubble Tea)
-├── events/          # Go event system
-├── luaengine/       # Lua scripting engine
-│   ├── core/        # Core Lua scripts
-│   └── bindings.go  # Go-Lua bridge
-└── protocol/        # Network protocols
-    └── telnet/      # Telnet implementation
+├── client/           # Core client implementation
+│   ├── buffer/       # Thread-safe line buffer management
+│   ├── viewport/     # Display and window management
+│   └── tui/         # Terminal UI using Bubble Tea
+├── events/          # Event system for inter-component communication
+├── luaengine/       # Lua scripting and event processing
+│   ├── core/        # Built-in core Lua scripts
+│   │   ├── init.lua       # Core initialization
+│   │   ├── input.lua      # Input processing and command splitting
+│   │   ├── alias.lua      # Alias expansion system
+│   │   ├── commands.lua   # Built-in command handlers
+│   │   ├── trigger.lua    # Trigger system
+│   │   ├── timer.lua      # Timer management
+│   │   ├── events.lua     # Event handling
+│   │   └── defaults.lua   # Default settings
+│   └── bindings.go  # Go-Lua bridge and API definitions
+└── protocol/        # Network protocol implementations
+    └── telnet/      # Telnet protocol handler
 ```
 
-## Event Systems and Flow
+## Data Flow Architecture
 
-### Core Event Types
+### Input Flow (User → MUD Server)
+1. User Input Capture
+   - TUI captures raw keyboard input
+   - Input is wrapped in `EventRawInput`
+   - Event dispatched to input processing pipeline
 
-#### Input-Related Events
-- `EventRawInput`: Unprocessed user input from TUI
-- `EventCommand`: Processed user input after Lua engine handling
-  - Aliases expanded
-  - Commands interpreted
+2. Lua Input Processing
+   - Raw input passed to Lua engine
+   - Scripts process for:
+     * Command aliases
+     * Input transformation
+   - Results in `EventCommand`
 
-#### Output-Related Events
-- `EventRawOutput`: Raw server output from telnet
-- `EventOutput`: Processed server output after Lua engine handling
-  - Triggers processed
-  - Text highlighted
-  - Lines gagged/filtered
+3. Command Execution
+   - Processed command sent to protocol handler (Telnet)
+   - Data transmitted to MUD server
 
-#### System Events
-- `EventConnect`/`EventDisconnect`: Connection management
-- `EventQuit`: Client shutdown
+### Output Flow (MUD Server → User)
+1. Server Data Reception
+   - Protocol handler receives raw server data
+   - Data wrapped in `EventRawOutput`
+   - Passed to output processing pipeline
 
-### Event Processing Details
+2. Lua Output Processing
+   - Raw output processed by Lua scripts for:
+     * Trigger matching
+     * Text highlighting
+     * Line filtering/gagging
+   - Results in `EventOutput`
 
-#### Input Processing
-1. User types in TUI
-2. TUI emits `EventRawInput`
-3. Lua engine processes input:
-   - Checks for aliases
-   - Expands variables
-   - Processes script commands
-4. Lua engine emits `EventCommand` with:
-   - Processed command text
-   - Any additional actions
-5. Client executes the command
-
-#### Output Processing
-1. Server sends data through telnet
-2. Client emits `EventRawOutput`
-3. Lua engine processes output:
-   - Checks trigger patterns
-   - Applies highlighting rules
-   - Handles gags/filters
-   - Processes ANSI codes
-4. For each trigger match:
-   - Executes trigger actions
-   - May generate additional output
-5. Lua engine emits `EventOutput` with:
-   - Processed text
-   - Highlighting information
-   - Display attributes
-6. Viewport renders the processed output
-
-### Lua Event System (`pkg/luaengine/core/events.lua`)
-- Manages script-level events and callbacks
-- Provides event registration and emission within Lua
-- Allows scripts to:
-  - Register trigger patterns
-  - Define aliases
-  - Process ANSI colors
-  - Filter output
-  - Generate new output
-
-### Event Flow Bridge
-The two event systems are bridged through the LuaEngine:
-1. Go → Lua:
-   - LuaEngine subscribes to Go events
-   - Transforms events into Lua events via `emitLuaEvent`
-   - Core Lua scripts process events
-   
-2. Lua → Go:
-   - Lua scripts call bound functions (e.g., `output`, `connect`)
-   - Bindings emit appropriate Go events
-   - Go components handle the events
+3. Display Rendering
+   - Processed output sent to viewport
+   - Buffer system manages line storage
+   - Viewport handles display and scrolling
+   - TUI renders final output
 
 ## Component Details
 
 ### Client (`pkg/client`)
-- Manages application lifecycle
-- Coordinates between components
-- Handles network connections
-- Routes events between systems
+Central coordinator managing:
+- Application lifecycle
+- Component initialization
+- Event routing
+- Network connections
+- Buffer management
 
 ### Buffer System (`pkg/client/buffer`)
-- Thread-safe line storage
-- Fixed-size circular buffer
-- Efficient line management
-- Supports partial retrieval for viewport
+Efficient line management featuring:
+- Thread-safe operations
+- Circular buffer implementation
+- Partial retrieval support
+- History management
+- Line attribute storage
 
-### Viewport System (`pkg/client/viewport`)
-- Manages visible content display
-- Efficient partial updates
+### Viewport (`pkg/client/viewport`)
+Display management providing:
+- Window content rendering
 - Scroll position tracking
-- Window resize handling
-
-### TUI System (`pkg/client/tui`)
-- Built on Bubble Tea
-- Input handling
-- Screen rendering
-- Status line management
+- Partial screen updates
+- Dynamic resizing
+- View attribute handling
 
 ### Lua Engine (`pkg/luaengine`)
-Core responsibilities:
-- Initializes Lua state
-- Loads core and user scripts
-- Provides Go function bindings
-- Manages event bridging
+Script processing engine offering:
+- Event system bridge
+- Go function bindings
+- Script loading/management
+- Sandboxed execution
+- Error handling
 
-Key components:
-1. Core Modules:
-   - `events.lua`: Event system
-   - Other core functionality modules
+Core Script System:
+- Built-in scripts loaded at startup:
+  * Command parsing and splitting (default separator ";")
+  * Alias system for command expansion
+  * Trigger system for output processing
+  * Timer management for scheduled actions
+  * Event handling for system integration
+  * Default settings and configurations
+- Builds the Runes Lua API:
+  * Core event system (add/emit handlers)
+  * Input processing functions
+  * Alias management
+  * Trigger registration
+  * Timer control
+  * Command system
+  * Default configurations
 
-2. Bindings:
-   - Connection management
+User Script System:
+- Scripts loaded via command or from configured directory
+- Supports runtime loading and reloading
+- Utilizes Runes Lua API for:
+  * Custom command definitions
+  * Personal aliases and triggers
+  * User-defined timers and events
+  * Configuration overrides
+- Persistent between sessions
+
+### Event System
+Manages bi-directional communication:
+1. Go Events:
+   - `EventRawInput`: User input
+   - `EventCommand`: Processed commands
+   - `EventRawOutput`: Server data
+   - `EventOutput`: Processed output
+   - System events (connect, disconnect, quit)
+
+2. Lua Events:
+   - Input processing
    - Output handling
-   - Buffer management
-   - Client control
-
-3. Script Management:
-   - Core script embedding
-   - User script loading
-   - Error handling
-   - Sandbox security
-
-## Data Flow
-
-### Input Processing
-1. User input → TUI
-2. TUI emits Go `EventRawInput`
-3. LuaEngine bridges to Lua event
-4. Lua scripts process input
-5. Scripts may:
-   - Emit output events
-   - Trigger commands
-   - Modify input
-   - Handle locally
-
-### Output Processing
-1. Server data → Telnet
-2. Client emits Go `EventRawOutput`
-3. LuaEngine bridges to Lua event
-4. Lua scripts process output
-5. Scripts emit processed output
-6. Go `EventOutput` triggered
-7. Client renders in viewport
 
 ## Extension Points
 
-### Script API
-- Event handlers
-- Custom commands
-- Output processing
+### Scripting API
+Comprehensive Lua API for:
+- Event handling
+- Input/Output processing
 - Buffer management
-- Connection handling
+- Connection control
+- Timer operations
+- Variable management
 
 ### Protocol Support
-- Telnet extensions
-- New protocol implementations
-- Custom negotiation
-
-### UI Customization
-- Status line content
-- Color schemes
-- Layout options
-- Custom widgets
-
-## Security
-
-### Script Sandboxing
-- Limited system access
-- Resource constraints
-- Error isolation
-- Safe defaults
-
-### Network Security
-- Protocol validation
-- Input sanitization
-- Connection safety
-
-## Performance
-
-### Buffer Management
-- Fixed size buffers
-- Efficient line storage
-- Minimal copying
-- Thread safety
-
-### Viewport Optimization
-- Partial updates
-- Visible-only rendering
-- Scroll position caching
-- Resize efficiency
-
-### Event Processing
-- Async event handling
-- Event batching
-- Efficient bridging
-- Memory management
+Extensible protocol system:
+- Telnet implementation
+- Custom protocol support
+- Negotiation handling
+- Data transformation

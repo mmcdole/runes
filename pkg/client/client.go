@@ -5,11 +5,8 @@ import (
 	"io"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mmcdole/runes/pkg/client/buffer"
-	"github.com/mmcdole/runes/pkg/client/input"
 	"github.com/mmcdole/runes/pkg/client/tui"
-	"github.com/mmcdole/runes/pkg/client/viewport"
 	"github.com/mmcdole/runes/pkg/events"
 	"github.com/mmcdole/runes/pkg/luaengine"
 	"github.com/mmcdole/runes/pkg/protocol/telnet"
@@ -28,20 +25,7 @@ type Client struct {
 
 func NewClient(userScriptDir string, eventProcessor *events.EventProcessor, debug bool) (*Client, error) {
 	config := tui.Config{
-		BufferConfig: buffer.BufferConfig{
-			MaxLines:   1000,
-			InitialCap: 100,
-		},
-		ViewportConfig: viewport.ViewportConfig{
-			Width:     80,  // Will be adjusted on first render
-			Height:    24,  // Will be adjusted on first render
-			ScrollOff: 5,
-		},
-		InputConfig: input.InputConfig{
-			Prompt:      "> ",
-			MaxHistory:  100,
-			InitialWidth: 80,
-		},
+		BufferSize: 1000,
 	}
 
 	client := &Client{
@@ -188,9 +172,7 @@ func (c *Client) SendCommand(cmd string) error {
 }
 
 func (c *Client) Run() error {
-	p := tea.NewProgram(c.tui)
-	_, err := p.Run()
-	return err
+	return c.tui.Run()
 }
 
 func (c *Client) ProcessServerOutput(line string) {

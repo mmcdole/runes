@@ -55,7 +55,7 @@ func (b *Buffer) GetLines(start, end int) []string {
 		end = len(b.lines)
 	}
 	if start >= end {
-		return []string{}
+		return nil
 	}
 
 	result := make([]string, end-start)
@@ -91,63 +91,70 @@ type BufferManager struct {
 	mutex   sync.RWMutex
 }
 
+// NewBufferManager creates a new BufferManager
 func NewBufferManager() *BufferManager {
 	bm := &BufferManager{
 		buffers: make(map[string]*Buffer),
-		current: "main",
 	}
-	bm.buffers["main"] = NewBuffer(BufferConfig{
-		MaxLines:   1000,
-		InitialCap: 100,
-	})
+	// Create default buffer
+	bm.buffers["main"] = NewBuffer(BufferConfig{MaxLines: 1000})
+	bm.current = "main"
 	return bm
 }
 
+// GetCurrentBuffer returns the current buffer
 func (bm *BufferManager) GetCurrentBuffer() *Buffer {
 	bm.mutex.RLock()
 	defer bm.mutex.RUnlock()
 	return bm.buffers[bm.current]
 }
 
+// SetCurrentBuffer sets the current buffer
 func (bm *BufferManager) SetCurrentBuffer(name string) {
 	bm.mutex.Lock()
 	defer bm.mutex.Unlock()
+
 	if _, exists := bm.buffers[name]; !exists {
-		bm.buffers[name] = NewBuffer(BufferConfig{
-			MaxLines:   1000,
-			InitialCap: 100,
-		})
+		bm.buffers[name] = NewBuffer(BufferConfig{MaxLines: 1000})
 	}
 	bm.current = name
 }
 
 // AddLine adds a line to the current buffer
 func (bm *BufferManager) AddLine(line string) {
-	bm.mutex.Lock()
-	defer bm.mutex.Unlock()
-	if buf, ok := bm.buffers[bm.current]; ok {
-		buf.Append(line)
-	}
+	bm.mutex.RLock()
+	buffer := bm.buffers[bm.current]
+	bm.mutex.RUnlock()
+
+	buffer.Append(line)
 }
 
 // LineProcessor processes incoming lines
 type LineProcessor struct {
-	mutex sync.Mutex
+	mutex       sync.Mutex
+	buffer      []byte
+	inSequence  bool
 }
 
+// NewLineProcessor creates a new LineProcessor
 func NewLineProcessor() *LineProcessor {
-	return &LineProcessor{}
+	return &LineProcessor{
+		buffer: make([]byte, 0, 1024),
+	}
 }
 
+// ProcessLine processes a line of text
 func (lp *LineProcessor) ProcessLine(line string) string {
 	lp.mutex.Lock()
 	defer lp.mutex.Unlock()
-	// Add any line processing logic here
+	
+	// Return as-is to preserve ANSI sequences
 	return line
 }
 
 // Write implements io.Writer for LineProcessor
 func (lp *LineProcessor) Write(p []byte) (n int, err error) {
-	_ = lp.ProcessLine(string(p))  // We process the line but don't need the result yet
+	// Process the line but preserve ANSI sequences
+	_ = lp.ProcessLine(string(p))
 	return len(p), nil
 }
