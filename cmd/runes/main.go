@@ -20,7 +20,7 @@ func main() {
 	eventProcessor := events.New()
 
 	// Create client with script directory and debug flag
-	client, err := client.NewClient(eventProcessor, *scriptDir, *debug)
+	client, err := client.NewClient(*scriptDir, eventProcessor, *debug)
 	if err != nil {
 		fmt.Printf("Failed to create client: %v\n", err)
 		os.Exit(1)

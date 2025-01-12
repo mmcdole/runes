@@ -6,49 +6,61 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mmcdole/runes/pkg/client/buffer"
+	"github.com/mmcdole/runes/pkg/client/input"
+	"github.com/mmcdole/runes/pkg/client/tui"
+	"github.com/mmcdole/runes/pkg/client/viewport"
 	"github.com/mmcdole/runes/pkg/events"
 	"github.com/mmcdole/runes/pkg/luaengine"
 	"github.com/mmcdole/runes/pkg/protocol/telnet"
 )
 
-// Client handles the core MUD client functionality
 type Client struct {
-	conn          Connection
+	conn          *telnet.TelnetConnection
+	tui           *tui.TUI
 	engine        *luaengine.LuaEngine
 	events        *events.EventProcessor
-	bufferMgr     *BufferManager
-	lineProcessor *LineProcessor
+	bufferMgr     *buffer.BufferManager
+	lineProcessor *buffer.LineProcessor
 	connected     bool
 	debug         bool
-	program       *tea.Program
-	model         *model
 }
 
-// NewClient creates a new MUD client
-func NewClient(eventProcessor *events.EventProcessor, userScriptDir string, debug bool) (*Client, error) {
-	// Initialization order is critical:
-	// Event handlers must be set up before Lua engine initialization
-	// to capture all events emitted during core script loading
+func NewClient(userScriptDir string, eventProcessor *events.EventProcessor, debug bool) (*Client, error) {
+	config := tui.Config{
+		BufferConfig: buffer.BufferConfig{
+			MaxLines:   1000,
+			InitialCap: 100,
+		},
+		ViewportConfig: viewport.ViewportConfig{
+			Width:     80,  // Will be adjusted on first render
+			Height:    24,  // Will be adjusted on first render
+			ScrollOff: 5,
+		},
+		InputConfig: input.InputConfig{
+			Prompt:      "> ",
+			MaxHistory:  100,
+			InitialWidth: 80,
+		},
+	}
 
 	client := &Client{
 		events:        eventProcessor,
-		bufferMgr:     NewBufferManager(),
-		lineProcessor: NewLineProcessor(),
+		bufferMgr:     buffer.NewBufferManager(),
+		lineProcessor: buffer.NewLineProcessor(),
 		debug:         debug,
 	}
 
-	// Initialize TUI first
-	model := NewModel(client, client.bufferMgr)
-	client.model = model
-	client.program = tea.NewProgram(model, tea.WithAltScreen())
-
-	client.setupEventHandlers()
-
+	client.tui = tui.New(config, client)
+	
 	engine := luaengine.New(userScriptDir, eventProcessor)
 	if err := engine.Initialize(); err != nil {
 		return nil, fmt.Errorf("failed to initialize lua engine: %v", err)
 	}
 	client.engine = engine
+
+	// Set up event handlers
+	client.setupEventHandlers()
 
 	return client, nil
 }
@@ -101,54 +113,72 @@ func (c *Client) handleOutput(e events.Event) {
 	if !ok {
 		return
 	}
-	c.bufferMgr.AddLine(data.Text, data.Buffer)
-	c.model.UpdateContent()
+	c.bufferMgr.AddLine(data.Text)
+	c.tui.AddLine(data.Text)
 }
 
 func (c *Client) handleQuit(e events.Event) {
-	c.Close()
+	c.Disconnect()
 	os.Exit(0)
 }
 
-// IsConnected returns true if the client is connected
-func (c *Client) IsConnected() bool {
-	return c.connected
-}
-
-// Connect connects to a MUD server
 func (c *Client) Connect(host string, port int) error {
-	if c.conn != nil {
-		c.conn.Close()
+	if c.connected {
+		return fmt.Errorf("already connected")
 	}
 
-	telnetConn, err := telnet.NewTelnetConnection(host, port, c.debug)
+	c.bufferMgr.AddLine(fmt.Sprintf("Connecting to %s:%d...", host, port))
+
+	conn, err := telnet.NewTelnetConnection(host, port, c.debug)
 	if err != nil {
-		c.events.Emit(events.Event{
-			Type: events.EventRawOutput,
-			Data: fmt.Sprintf("Failed to connect: %v", err),
-		})
-		return err
+		return fmt.Errorf("failed to connect: %v", err)
 	}
 
-	c.conn = telnetConn
+	c.conn = conn
 	c.connected = true
 
-	// Start reading from connection
-	go c.readLoop()
+	// Start processing incoming data
+	go c.processIncoming()
 
 	return nil
 }
 
-// Disconnect closes the connection to the MUD server
-func (c *Client) Disconnect() error {
-	if !c.connected {
-		return nil
+func (c *Client) processIncoming() {
+	buf := make([]byte, 4096)
+	for {
+		n, err := c.conn.Read(buf)
+		if err != nil {
+			if err != io.EOF {
+				fmt.Fprintf(os.Stderr, "Error reading from connection: %v\n", err)
+			}
+			c.connected = false
+			c.events.Emit(events.Event{
+				Type: events.EventDisconnected,
+			})
+			break
+		}
+
+		if n > 0 {
+			// Process telnet protocol
+			c.lineProcessor.Write(buf[:n])
+			
+			// Send raw output to lua engine for processing
+			c.events.Emit(events.Event{
+				Type: events.EventRawOutput,
+				Data: string(buf[:n]),
+			})
+		}
 	}
-	c.connected = false
-	return c.conn.Close()
 }
 
-// SendCommand sends a command to the MUD server
+func (c *Client) HandleInput(input string) {
+	// All input goes through the event system
+	c.events.Emit(events.Event{
+		Type: events.EventRawInput,
+		Data: input,
+	})
+}
+
 func (c *Client) SendCommand(cmd string) error {
 	if !c.connected {
 		return fmt.Errorf("not connected")
@@ -157,61 +187,43 @@ func (c *Client) SendCommand(cmd string) error {
 	return err
 }
 
-// Send sends data to the server
-func (c *Client) Send(data string) {
+func (c *Client) Run() error {
+	p := tea.NewProgram(c.tui)
+	_, err := p.Run()
+	return err
+}
+
+func (c *Client) ProcessServerOutput(line string) {
+	c.tui.AddLine(line)
+}
+
+func (c *Client) Disconnect() error {
 	if !c.connected {
-		return
+		return nil
 	}
-	c.conn.Write([]byte(data + "\n"))
+
+	err := c.conn.Close()
+	c.connected = false
+	c.conn = nil
+	return err
 }
 
-func (c *Client) readLoop() {
-	buf := make([]byte, 4096)
-	for {
-		n, err := c.conn.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				fmt.Printf("Read error: %v\n", err)
-			}
-			c.connected = false
-			c.events.Emit(events.Event{
-				Type: events.EventDisconnected,
-			})
-			return
-		}
-
-		if n > 0 {
-			// Process the raw data into lines
-			lines := c.lineProcessor.Write(buf[:n])
-			for _, line := range lines {
-				c.events.Emit(events.Event{
-					Type: events.EventRawOutput,
-					Data: line,
-				})
-			}
-		}
-	}
+func (c *Client) IsConnected() bool {
+	return c.connected
 }
 
-// New method to handle input from the TUI
-func (c *Client) HandleInput(input string) {
+func (c *Client) HandleQuit() {
 	c.events.Emit(events.Event{
-		Type: events.EventRawInput,
-		Data: input,
+		Type: events.EventQuit,
 	})
 }
 
-// Replace inputLoop with TUI program
-func (c *Client) Run() error {
-	if err := c.program.Start(); err != nil {
-		return fmt.Errorf("error running program: %v", err)
-	}
-	return nil
-}
-
-// Close closes the client connection
+// Close performs cleanup and shuts down the client
 func (c *Client) Close() {
 	if c.connected {
 		c.Disconnect()
+	}
+	if c.engine != nil {
+		c.engine.Close()
 	}
 }
