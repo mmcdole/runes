@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/mmcdole/runes/pkg/client/buffer"
-	"github.com/mmcdole/runes/pkg/client/tui"
+	"github.com/mmcdole/runes/pkg/client/ui"
 	"github.com/mmcdole/runes/pkg/events"
 	"github.com/mmcdole/runes/pkg/luaengine"
 	"github.com/mmcdole/runes/pkg/protocol/telnet"
@@ -14,7 +14,7 @@ import (
 
 type Client struct {
 	conn          *telnet.TelnetConnection
-	tui           *tui.TUI
+	ui           *ui.UI
 	engine        *luaengine.LuaEngine
 	events        *events.EventProcessor
 	bufferMgr     *buffer.BufferManager
@@ -24,7 +24,7 @@ type Client struct {
 }
 
 func NewClient(userScriptDir string, eventProcessor *events.EventProcessor, debug bool) (*Client, error) {
-	config := tui.Config{
+	config := ui.Config{
 		BufferSize: 1000,
 	}
 
@@ -35,16 +35,24 @@ func NewClient(userScriptDir string, eventProcessor *events.EventProcessor, debu
 		debug:         debug,
 	}
 
-	client.tui = tui.New(config, client)
-	
+	uiInstance, err := ui.New(config, client, client.bufferMgr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create UI: %w", err)
+	}
+	client.ui = uiInstance
+
 	engine := luaengine.New(userScriptDir, eventProcessor)
 	if err := engine.Initialize(); err != nil {
-		return nil, fmt.Errorf("failed to initialize lua engine: %v", err)
+		return nil, fmt.Errorf("failed to initialize lua engine: %w", err)
 	}
 	client.engine = engine
 
 	// Set up event handlers
 	client.setupEventHandlers()
+
+	// Set initial status
+	client.ui.SetStatus("Welcome to Runes MUD Client")
+	client.bufferMgr.AddLine("Type /help for a list of commands")
 
 	return client, nil
 }
@@ -98,7 +106,6 @@ func (c *Client) handleOutput(e events.Event) {
 		return
 	}
 	c.bufferMgr.AddLine(data.Text)
-	c.tui.AddLine(data.Text)
 }
 
 func (c *Client) handleQuit(e events.Event) {
@@ -145,7 +152,7 @@ func (c *Client) processIncoming() {
 		if n > 0 {
 			// Process telnet protocol
 			c.lineProcessor.Write(buf[:n])
-			
+
 			// Send raw output to lua engine for processing
 			c.events.Emit(events.Event{
 				Type: events.EventRawOutput,
@@ -172,11 +179,11 @@ func (c *Client) SendCommand(cmd string) error {
 }
 
 func (c *Client) Run() error {
-	return c.tui.Run()
+	return c.ui.Run()
 }
 
 func (c *Client) ProcessServerOutput(line string) {
-	c.tui.AddLine(line)
+	c.ui.AddLine(line)
 }
 
 func (c *Client) Disconnect() error {

@@ -86,9 +86,10 @@ func (b *Buffer) Content() string {
 
 // BufferManager manages multiple named buffers
 type BufferManager struct {
-	buffers map[string]*Buffer
-	current string
-	mutex   sync.RWMutex
+	buffers  map[string]*Buffer
+	current  string
+	mu       sync.RWMutex
+	onUpdate func() // Callback when buffer is updated
 }
 
 // NewBufferManager creates a new BufferManager
@@ -96,23 +97,34 @@ func NewBufferManager() *BufferManager {
 	bm := &BufferManager{
 		buffers: make(map[string]*Buffer),
 	}
-	// Create default buffer
-	bm.buffers["main"] = NewBuffer(BufferConfig{MaxLines: 1000})
 	bm.current = "main"
+	bm.buffers[bm.current] = NewBuffer(BufferConfig{MaxLines: 1000})
 	return bm
+}
+
+// SetUpdateCallback sets the callback for buffer updates
+func (bm *BufferManager) SetUpdateCallback(cb func()) {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+	bm.onUpdate = cb
 }
 
 // GetCurrentBuffer returns the current buffer
 func (bm *BufferManager) GetCurrentBuffer() *Buffer {
-	bm.mutex.RLock()
-	defer bm.mutex.RUnlock()
-	return bm.buffers[bm.current]
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
+	buf, ok := bm.buffers[bm.current]
+	if !ok {
+		buf = NewBuffer(BufferConfig{MaxLines: 1000})
+		bm.buffers[bm.current] = buf
+	}
+	return buf
 }
 
 // SetCurrentBuffer sets the current buffer
 func (bm *BufferManager) SetCurrentBuffer(name string) {
-	bm.mutex.Lock()
-	defer bm.mutex.Unlock()
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
 
 	if _, exists := bm.buffers[name]; !exists {
 		bm.buffers[name] = NewBuffer(BufferConfig{MaxLines: 1000})
@@ -122,11 +134,31 @@ func (bm *BufferManager) SetCurrentBuffer(name string) {
 
 // AddLine adds a line to the current buffer
 func (bm *BufferManager) AddLine(line string) {
-	bm.mutex.RLock()
-	buffer := bm.buffers[bm.current]
-	bm.mutex.RUnlock()
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
 
-	buffer.Append(line)
+	if bm.current == "" {
+		bm.current = "main"
+	}
+
+	buf, ok := bm.buffers[bm.current]
+	if !ok {
+		buf = NewBuffer(BufferConfig{MaxLines: 1000})
+		bm.buffers[bm.current] = buf
+	}
+
+	// Split the input into lines and add each one separately
+	lines := strings.Split(line, "\n")
+	for _, l := range lines {
+		if l != "" { // Skip empty lines
+			buf.Append(l)
+		}
+	}
+
+	// Notify UI of update
+	if bm.onUpdate != nil {
+		go bm.onUpdate() // Run callback in goroutine to avoid deadlock
+	}
 }
 
 // LineProcessor processes incoming lines
