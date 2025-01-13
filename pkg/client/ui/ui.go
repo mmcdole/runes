@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/mmcdole/runes/pkg/client/buffer"
@@ -14,43 +13,36 @@ type UI struct {
 	screen     *screen.Screen
 	client     Client
 	buffer     *buffer.BufferManager
-	autoScroll bool
-	statusText string
-	scrollPos  int
-
-	// Input handling
+	done       chan struct{}
+	inputMutex sync.Mutex
 	inputBuf   string
 	inputPos   int
-	inputMutex sync.Mutex
-
-	// Event channels
-	done chan struct{}
+	statusText string
 }
 
-// Client interface for handling input and quit events
+// Client interface for UI callbacks
 type Client interface {
 	HandleInput(input string)
 	HandleQuit()
 }
 
-// Config holds the UI configuration
-type Config struct {
-	BufferSize int
-}
+const (
+	statusHeight = 1
+	inputHeight  = 1
+)
 
 // New creates a new UI instance
-func New(config Config, client Client, bufferMgr *buffer.BufferManager) (*UI, error) {
+func New(client Client, bufferMgr *buffer.BufferManager, opts ...Option) (*UI, error) {
 	scr, err := screen.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create screen: %w", err)
 	}
 
 	ui := &UI{
-		screen:     scr,
-		client:     client,
-		buffer:     bufferMgr,
-		done:       make(chan struct{}),
-		autoScroll: true,
+		screen:  scr,
+		client:  client,
+		buffer:  bufferMgr,
+		done:    make(chan struct{}),
 	}
 
 	// Register draw callback for buffer updates
@@ -59,203 +51,163 @@ func New(config Config, client Client, bufferMgr *buffer.BufferManager) (*UI, er
 	// Start event handling
 	go ui.handleEvents()
 
+	for _, opt := range opts {
+		opt(ui)
+	}
+
 	return ui, nil
-}
-
-// handleEvents processes terminal events
-func (ui *UI) handleEvents() {
-	for {
-		select {
-		case <-ui.done:
-			return
-		default:
-			ev := ui.screen.PollEvent()
-			ui.handleKeyEvent(ev)
-		}
-	}
-}
-
-// handleKeyEvent processes keyboard input
-func (ui *UI) handleKeyEvent(ev screen.Key) {
-	ui.inputMutex.Lock()
-	defer ui.inputMutex.Unlock()
-
-	switch ev.Type {
-	case screen.KeyTypeSpecial:
-		switch ev.Special {
-		case screen.KeyEnter:
-			if ui.inputBuf != "" {
-				input := ui.inputBuf
-				ui.inputBuf = ""
-				ui.inputPos = 0
-				ui.draw()
-				ui.client.HandleInput(input)
-			}
-		case screen.KeyBackspace:
-			if ui.inputPos > 0 {
-				ui.inputBuf = ui.inputBuf[:ui.inputPos-1] + ui.inputBuf[ui.inputPos:]
-				ui.inputPos--
-			}
-		case screen.KeyDelete:
-			if ui.inputPos < len(ui.inputBuf) {
-				ui.inputBuf = ui.inputBuf[:ui.inputPos] + ui.inputBuf[ui.inputPos+1:]
-			}
-		case screen.KeyLeft:
-			if ui.inputPos > 0 {
-				ui.inputPos--
-			}
-		case screen.KeyRight:
-			if ui.inputPos < len(ui.inputBuf) {
-				ui.inputPos++
-			}
-		case screen.KeyHome:
-			ui.inputPos = 0
-		case screen.KeyEnd:
-			ui.inputPos = len(ui.inputBuf)
-		case screen.KeyPgUp:
-			ui.ScrollUp(10)
-		case screen.KeyPgDn:
-			ui.ScrollDown(10)
-		case screen.KeyCtrlC:
-			ui.client.HandleQuit()
-		}
-	case screen.KeyTypeRune:
-		// Insert character at cursor position
-		if ui.inputPos == len(ui.inputBuf) {
-			ui.inputBuf += string(ev.Rune)
-		} else {
-			ui.inputBuf = ui.inputBuf[:ui.inputPos] + string(ev.Rune) + ui.inputBuf[ui.inputPos:]
-		}
-		ui.inputPos++
-	}
-
-	ui.draw()
-}
-
-// draw renders the entire UI
-func (ui *UI) draw() {
-	_, height := ui.screen.Size()
-	
-	// Clear entire screen first
-	ui.screen.Clear()
-	
-	// Draw status bar with background color
-	ui.screen.Write(fmt.Sprintf("\x1b[%d;%dm%s\x1b[0m\r\n", 37, 44, ui.statusText))
-
-	// Get visible lines
-	buf := ui.buffer.GetCurrentBuffer()
-	maxScroll := buf.Length() - (height - 2) // -2 for status and input lines
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
-
-	// If auto-scroll is enabled, move to the bottom
-	if ui.autoScroll {
-		ui.scrollPos = maxScroll
-	}
-
-	// Get the lines to display
-	lines := buf.GetLines(ui.scrollPos, ui.scrollPos+(height-2))
-
-	// Write each line with newline
-	for _, line := range lines {
-		ui.screen.Write(line + "\r\n")
-	}
-
-	// Move to input line and clear it
-	ui.screen.SetCursor(0, height-1)
-	ui.screen.Write("\x1b[2K") // Clear entire line
-		
-	// Draw input line with prompt
-	ui.screen.Write(fmt.Sprintf("\x1b[%d;%dm> %s\x1b[0m", 37, 40, ui.inputBuf))
-	ui.screen.SetCursor(ui.inputPos+2, height-1)
-}
-
-// AddLine adds a line to the output
-func (ui *UI) AddLine(line string) {
-	ui.inputMutex.Lock()
-	defer ui.inputMutex.Unlock()
-
-	// Split the line by newlines and add each part
-	parts := strings.Split(line, "\n")
-	for _, l := range parts {
-		if l != "" {
-			ui.buffer.AddLine(l)
-		}
-	}
-
-	ui.draw()
-}
-
-// SetStatus sets the status bar text
-func (ui *UI) SetStatus(text string) {
-	ui.inputMutex.Lock()
-	defer ui.inputMutex.Unlock()
-	ui.statusText = text
-	ui.draw()
 }
 
 // Run starts the UI
 func (ui *UI) Run() error {
-	// Make sure cursor is hidden
+	// Initialize screen regions
+	_, height := ui.screen.Size()
+	ui.screen.SetScrollRegion(statusHeight, height-inputHeight-1)
+	
+	// Hide cursor during initial draw
 	ui.screen.ShowCursor(false)
 	
 	// Draw initial screen
-	ui.draw()
+	ui.drawStatus()
+	ui.drawBuffer()
+	ui.drawInput()
 	
 	// Show cursor at input line
 	ui.screen.ShowCursor(true)
 	return nil
 }
 
-// Stop stops the UI
-func (ui *UI) Stop() {
+// SetStatus sets the status text
+func (ui *UI) SetStatus(text string) {
+	ui.statusText = text
+	ui.drawStatus()
+}
+
+// PrintOutput prints a line to the output area
+func (ui *UI) PrintOutput(line string) {
+	ui.buffer.AddLine(line)
+	ui.drawBuffer()
+}
+
+// drawStatus draws the status bar
+func (ui *UI) drawStatus() {
+	width, _ := ui.screen.Size()
+	ui.screen.WriteAt(fmt.Sprintf("\x1b[44m%-*s\x1b[0m", width, ui.statusText), 0, 0)
+}
+
+// drawBuffer draws the buffer content
+func (ui *UI) drawBuffer() {
+	_, height := ui.screen.Size()
+	contentHeight := height - statusHeight - inputHeight
+
+	// Get visible lines
+	buf := ui.buffer.GetCurrentBuffer()
+	lines := buf.GetLines(buf.Length()-contentHeight, buf.Length())
+
+	// Clear content area
+	ui.screen.ClearRegion(statusHeight, height-inputHeight-1)
+
+	// Draw visible lines
+	for i, line := range lines {
+		ui.screen.WriteAt(line, 0, statusHeight+i)
+	}
+}
+
+// drawInput draws the input line
+func (ui *UI) drawInput() {
+	_, height := ui.screen.Size()
+	inputLine := height - 1
+
+	// Save cursor position
+	ui.screen.SaveCursor()
+
+	// Clear and draw input line
+	ui.screen.WriteAt("\x1b[40m> "+ui.inputBuf+"\x1b[0m", 0, inputLine)
+	ui.screen.SetCursor(ui.inputPos+2, inputLine)
+
+	// Restore cursor position
+	ui.screen.RestoreCursor()
+}
+
+// draw updates the entire UI
+func (ui *UI) draw() {
+	ui.screen.ShowCursor(false)
+	ui.drawStatus()
+	ui.drawBuffer()
+	ui.drawInput()
+	ui.screen.ShowCursor(true)
+}
+
+// handleEvents processes UI events
+func (ui *UI) handleEvents() {
+	for {
+		select {
+		case <-ui.done:
+			return
+		default:
+			event := ui.screen.PollEvent()
+			switch event.Type {
+			case screen.KeyTypeResize:
+				_, height := ui.screen.Size()
+				ui.screen.SetScrollRegion(statusHeight, height-inputHeight-1)
+				ui.draw()
+			case screen.KeyTypeSpecial:
+				switch event.Special {
+				case screen.KeyCtrlC:
+					ui.client.HandleQuit()
+					return
+				case screen.KeyEnter:
+					if len(ui.inputBuf) > 0 {
+						ui.client.HandleInput(ui.inputBuf)
+						ui.inputBuf = ""
+						ui.inputPos = 0
+						ui.drawInput()
+					}
+				case screen.KeyBackspace:
+					if ui.inputPos > 0 {
+						ui.inputBuf = ui.inputBuf[:ui.inputPos-1] + ui.inputBuf[ui.inputPos:]
+						ui.inputPos--
+						ui.drawInput()
+					}
+				case screen.KeyDelete:
+					if ui.inputPos < len(ui.inputBuf) {
+						ui.inputBuf = ui.inputBuf[:ui.inputPos] + ui.inputBuf[ui.inputPos+1:]
+						ui.drawInput()
+					}
+				case screen.KeyLeft:
+					if ui.inputPos > 0 {
+						ui.inputPos--
+						ui.drawInput()
+					}
+				case screen.KeyRight:
+					if ui.inputPos < len(ui.inputBuf) {
+						ui.inputPos++
+						ui.drawInput()
+					}
+				case screen.KeyHome:
+					ui.inputPos = 0
+					ui.drawInput()
+				case screen.KeyEnd:
+					ui.inputPos = len(ui.inputBuf)
+					ui.drawInput()
+				}
+			case screen.KeyTypeRune:
+				if ui.inputPos == len(ui.inputBuf) {
+					ui.inputBuf += string(event.Rune)
+				} else {
+					ui.inputBuf = ui.inputBuf[:ui.inputPos] + string(event.Rune) + ui.inputBuf[ui.inputPos:]
+				}
+				ui.inputPos++
+				ui.drawInput()
+			}
+		}
+	}
+}
+
+// Close cleans up the UI
+func (ui *UI) Close() {
 	close(ui.done)
 	ui.screen.Close()
 }
 
-// Clear clears the viewport
-func (ui *UI) Clear() {
-	ui.screen.Clear()
-	ui.draw()
-}
-
-// ScrollUp scrolls the content up
-func (ui *UI) ScrollUp(lines int) {
-	ui.inputMutex.Lock()
-	defer ui.inputMutex.Unlock()
-	
-	ui.scrollPos -= lines
-	if ui.scrollPos < 0 {
-		ui.scrollPos = 0
-	}
-	ui.autoScroll = false
-	ui.draw()
-}
-
-// ScrollDown scrolls the content down
-func (ui *UI) ScrollDown(lines int) {
-	ui.inputMutex.Lock()
-	defer ui.inputMutex.Unlock()
-
-	_, height := ui.screen.Size()
-	buf := ui.buffer.GetCurrentBuffer()
-	maxScroll := buf.Length() - (height - 2)
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
-
-	ui.scrollPos += lines
-	if ui.scrollPos > maxScroll {
-		ui.scrollPos = maxScroll
-		ui.autoScroll = true
-	}
-	ui.draw()
-}
-
-// HandleResize handles terminal resize events
-func (ui *UI) HandleResize() {
-	ui.inputMutex.Lock()
-	defer ui.inputMutex.Unlock()
-	ui.draw()
-}
+type Option func(*UI)

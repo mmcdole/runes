@@ -3,7 +3,7 @@ package client
 import (
 	"fmt"
 	"io"
-	"os"
+	"bytes"
 
 	"github.com/mmcdole/runes/pkg/client/buffer"
 	"github.com/mmcdole/runes/pkg/client/ui"
@@ -12,34 +12,44 @@ import (
 	"github.com/mmcdole/runes/pkg/protocol/telnet"
 )
 
+// Client represents a MUD client
 type Client struct {
+	host          string
+	port          int
 	conn          *telnet.TelnetConnection
-	ui           *ui.UI
-	engine        *luaengine.LuaEngine
+	ui            *ui.UI
 	events        *events.EventProcessor
 	bufferMgr     *buffer.BufferManager
 	lineProcessor *buffer.LineProcessor
-	connected     bool
 	debug         bool
+	engine        *luaengine.LuaEngine
+	done          chan struct{}
 }
 
-func NewClient(userScriptDir string, eventProcessor *events.EventProcessor, debug bool) (*Client, error) {
-	config := ui.Config{
-		BufferSize: 1000,
-	}
+// Config holds the client configuration
+type Config struct {
+	Host string
+	Port int
+}
 
+// NewClient creates a new client instance
+func NewClient(userScriptDir string, eventProcessor *events.EventProcessor, config Config, debug bool) (*Client, error) {
 	client := &Client{
+		host:          config.Host,
+		port:          config.Port,
 		events:        eventProcessor,
 		bufferMgr:     buffer.NewBufferManager(),
 		lineProcessor: buffer.NewLineProcessor(),
 		debug:         debug,
+		done:          make(chan struct{}),
 	}
 
-	uiInstance, err := ui.New(config, client, client.bufferMgr)
+	// Create UI
+	ui, err := ui.New(client, client.bufferMgr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create UI: %w", err)
 	}
-	client.ui = uiInstance
+	client.ui = ui
 
 	engine := luaengine.New(userScriptDir, eventProcessor)
 	if err := engine.Initialize(); err != nil {
@@ -50,169 +60,93 @@ func NewClient(userScriptDir string, eventProcessor *events.EventProcessor, debu
 	// Set up event handlers
 	client.setupEventHandlers()
 
-	// Set initial status
-	client.ui.SetStatus("Welcome to Runes MUD Client")
-	client.bufferMgr.AddLine("Type /help for a list of commands")
-
 	return client, nil
 }
 
-func (c *Client) setupEventHandlers() {
-	c.events.Subscribe(events.EventConnect, c.handleConnect)
-	c.events.Subscribe(events.EventDisconnect, c.handleDisconnect)
-	c.events.Subscribe(events.EventCommand, c.handleCommand)
-	c.events.Subscribe(events.EventOutput, c.handleOutput)
-	c.events.Subscribe(events.EventQuit, c.handleQuit)
-}
-
-func (c *Client) handleConnect(e events.Event) {
-	data, ok := e.Data.(struct {
-		Host string
-		Port int
-	})
-	if !ok {
-		return
+// Run starts the client and UI
+func (c *Client) Run() error {
+	// Start UI
+	if err := c.ui.Run(); err != nil {
+		return fmt.Errorf("failed to start UI: %w", err)
 	}
 
-	if err := c.Connect(data.Host, data.Port); err == nil {
-		// Only emit Connected event on success
-		c.events.Emit(events.Event{
-			Type: events.EventConnected,
-			Data: data,
-		})
-	}
-}
+	// Set status to connecting
+	c.ui.SetStatus("Connecting...")
 
-func (c *Client) handleDisconnect(e events.Event) {
-	if err := c.Disconnect(); err == nil {
-		c.events.Emit(events.Event{
-			Type: events.EventDisconnected,
-		})
-	}
-}
-
-func (c *Client) handleCommand(e events.Event) {
-	if cmd, ok := e.Data.(string); ok {
-		c.SendCommand(cmd)
-	}
-}
-
-func (c *Client) handleOutput(e events.Event) {
-	data, ok := e.Data.(struct {
-		Text   string
-		Buffer string
-	})
-	if !ok {
-		return
-	}
-	c.bufferMgr.AddLine(data.Text)
-}
-
-func (c *Client) handleQuit(e events.Event) {
-	c.Disconnect()
-	os.Exit(0)
-}
-
-func (c *Client) Connect(host string, port int) error {
-	if c.connected {
-		return fmt.Errorf("already connected")
-	}
-
-	c.bufferMgr.AddLine(fmt.Sprintf("Connecting to %s:%d...", host, port))
-
-	conn, err := telnet.NewTelnetConnection(host, port, c.debug)
+	// Connect to server
+	var err error
+	c.conn, err = telnet.NewTelnetConnection(c.host, c.port, c.debug)
 	if err != nil {
-		return fmt.Errorf("failed to connect: %v", err)
+		return fmt.Errorf("failed to connect: %w", err)
 	}
 
-	c.conn = conn
-	c.connected = true
+	// Set status to connected
+	c.ui.SetStatus("Connected")
 
-	// Start processing incoming data
-	go c.processIncoming()
+	// Start reading from telnet
+	go func() {
+		buf := make([]byte, 4096)
+		line := ""
+		for {
+			select {
+			case <-c.done:
+				return
+			default:
+				n, err := c.conn.Read(buf)
+				if err != nil {
+					if err == io.EOF {
+						c.ui.PrintOutput("Connection closed by server")
+						c.Close()
+						return
+					}
+					c.ui.PrintOutput(fmt.Sprintf("Error reading from server: %v", err))
+					continue
+				}
+				line += string(buf[:n])
+				if i := bytes.IndexByte(buf[:n], '\n'); i >= 0 {
+					c.ProcessServerOutput(line[:i])
+					line = line[i+1:]
+				}
+			}
+		}
+	}()
 
 	return nil
 }
 
-func (c *Client) processIncoming() {
-	buf := make([]byte, 4096)
-	for {
-		n, err := c.conn.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				fmt.Fprintf(os.Stderr, "Error reading from connection: %v\n", err)
-			}
-			c.connected = false
-			c.events.Emit(events.Event{
-				Type: events.EventDisconnected,
-			})
-			break
-		}
-
-		if n > 0 {
-			// Process telnet protocol
-			c.lineProcessor.Write(buf[:n])
-
-			// Send raw output to lua engine for processing
-			c.events.Emit(events.Event{
-				Type: events.EventRawOutput,
-				Data: string(buf[:n]),
-			})
-		}
-	}
-}
-
+// HandleInput handles user input
 func (c *Client) HandleInput(input string) {
-	// All input goes through the event system
-	c.events.Emit(events.Event{
-		Type: events.EventRawInput,
-		Data: input,
-	})
-}
-
-func (c *Client) SendCommand(cmd string) error {
-	if !c.connected {
-		return fmt.Errorf("not connected")
+	if _, err := c.conn.Write([]byte(input + "\n")); err != nil {
+		c.ui.PrintOutput(fmt.Sprintf("Error sending input: %v", err))
 	}
-	_, err := c.conn.Write([]byte(cmd + "\n"))
-	return err
 }
 
-func (c *Client) Run() error {
-	return c.ui.Run()
-}
-
-func (c *Client) ProcessServerOutput(line string) {
-	c.ui.AddLine(line)
-}
-
-func (c *Client) Disconnect() error {
-	if !c.connected {
-		return nil
-	}
-
-	err := c.conn.Close()
-	c.connected = false
-	c.conn = nil
-	return err
-}
-
-func (c *Client) IsConnected() bool {
-	return c.connected
-}
-
+// HandleQuit handles quit request
 func (c *Client) HandleQuit() {
-	c.events.Emit(events.Event{
-		Type: events.EventQuit,
-	})
+	c.Close()
 }
 
-// Close performs cleanup and shuts down the client
+// ProcessServerOutput processes output from the server
+func (c *Client) ProcessServerOutput(line string) {
+	c.ui.PrintOutput(line)
+}
+
+// Close closes the client
 func (c *Client) Close() {
-	if c.connected {
-		c.Disconnect()
+	close(c.done)
+	if c.conn != nil {
+		c.conn.Close()
 	}
-	if c.engine != nil {
-		c.engine.Close()
+	if c.ui != nil {
+		c.ui.Close()
 	}
+}
+
+// Wait waits for the client to finish
+func (c *Client) Wait() {
+	<-c.done
+}
+
+func (c *Client) setupEventHandlers() {
+	// Add event handlers here
 }
