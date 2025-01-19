@@ -244,10 +244,10 @@ func (c *Client) handleTelnetOutput() {
 				if i < 0 {
 					break
 				}
-				// Emit complete line without the newline
+				// Emit complete line without the newline, including empty lines
 				c.events.Emit(events.Event{
 					Type: events.EventRawOutput,
-					Data: line[:i], // Don't include the newline
+					Data: line[:i],
 				})
 				line = line[i+1:]
 			}
@@ -258,6 +258,7 @@ func (c *Client) handleTelnetOutput() {
 					Type: events.EventRawOutput,
 					Data: line,
 				})
+				line = ""
 			}
 		}
 	}
@@ -289,7 +290,7 @@ func (c *Client) handleProcessedOutput(e events.Event) {
 		Buffer string
 	}); ok {
 		// Output text already has ANSI codes from Lua
-		c.buffer.Write(output.Text + "\n")
+		c.buffer.Write(output.Text)
 		c.viewport.UpdateView()
 		width, height := c.term.Size()
 		c.layout.RenderAll(width, height)
