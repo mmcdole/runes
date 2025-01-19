@@ -49,10 +49,10 @@ func (b *luaBindings) connect(L *lua.LState) int {
 	port := L.ToInt(2)
 	b.engine.eventSystem.Emit(events.Event{
 		Type: events.EventConnect,
-		Data: struct {
-			Host string
-			Port int
-		}{host, port},
+		Data: map[string]interface{}{
+			"host": host,
+			"port": port,
+		},
 	})
 	return 0
 }

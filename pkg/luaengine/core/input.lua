@@ -46,6 +46,8 @@ end
 
 -- Public API
 function runes.send(commandStr)
+    -- Echo command with green prompt
+    runes.output("\027[1;32m> " .. commandStr .. "\027[0m")
     enqueue(commandStr)
 end
 
