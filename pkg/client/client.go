@@ -162,15 +162,13 @@ func (c *Client) handleInput(input []byte) error {
 	// If it was handled and it was Enter, send the command
 	if handled && terminal.IsEnter(input) {
 		content := c.inputBar.GetContent()
-		if content != "" {
-			// First emit raw input for Lua processing
-			c.events.Emit(events.Event{
-				Type: events.EventRawInput,
-				Data: content,
-			})
-			c.history.Add(content) // Add command to history
-			c.inputBar.Clear()
-		}
+		// First emit raw input for Lua processing
+		c.events.Emit(events.Event{
+			Type: events.EventRawInput,
+			Data: content,
+		})
+		c.history.Add(content) // Add command to history
+		c.inputBar.Clear()
 	}
 	return nil
 }

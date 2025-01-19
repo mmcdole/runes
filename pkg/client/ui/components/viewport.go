@@ -126,16 +126,20 @@ func (v *Viewport) GetMode() ViewportMode {
 func (v *Viewport) Render(region layout.Region) {
 	v.region = region
 	
-	// Clear viewport area
-	for i := 0; i < region.Height; i++ {
-		v.term.Write([]byte(fmt.Sprintf("\033[%d;%dH\033[K", region.Row+i+1, region.Col+1)))
-	}
-	
 	// Get visible lines
 	lines := v.buffer.GetLines(v.visibleRange.start, v.visibleRange.count)
 	
-	// Write visible content
-	for i, line := range lines {
-		v.term.Write([]byte(fmt.Sprintf("\033[%d;%dH%s", region.Row+i+1, region.Col+1, line.Content)))
+	// Build the output string with all clear+write operations
+	var output string
+	for i := 0; i < region.Height; i++ {
+		// Clear line and move cursor
+		output += fmt.Sprintf("\033[%d;%dH\033[K", region.Row+i+1, region.Col+1)
+		// Write content if we have it
+		if i < len(lines) {
+			output += lines[i].Content
+		}
 	}
+	
+	// Send all operations in a single write
+	v.term.Write([]byte(output))
 }
