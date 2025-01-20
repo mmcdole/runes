@@ -8,8 +8,18 @@ type EventType string
 
 const (
 	// Raw events (from client/mud)
-	EventRawInput  EventType = "raw_input"  // From client
-	EventRawOutput EventType = "raw_output" // From MUD
+	EventRawInput  EventType = "raw_input"  // From client (string)
+	EventRawOutput EventType = "raw_output" // From MUD (*Line)
+	EventRawPrompt EventType = "raw_prompt" // From MUD/Lua (*Line)
+
+	// Processed events (from LuaEngine)
+	EventInput        EventType = "input"  // string
+	EventOutput       EventType = "output" // *Line
+	EventPrompt       EventType = "prompt" // *Line
+	EventLog          EventType = "log"    // string
+	EventDebug        EventType = "debug"  // string
+	EventListBuffers  EventType = "list_buffers"
+	EventSwitchBuffer EventType = "switch_buffer"
 
 	// Connection events
 	EventConnect      EventType = "connect"      // Request to connect
@@ -17,16 +27,8 @@ const (
 	EventDisconnect   EventType = "disconnect"   // Request to disconnect
 	EventDisconnected EventType = "disconnected" // Connection closed
 
-	// Processed events (from LuaEngine)
-	EventCommand      EventType = "command"
-	EventOutput       EventType = "output"
-	EventLog          EventType = "log"
-	EventDebug        EventType = "debug"
-	EventListBuffers  EventType = "list_buffers"
-	EventSwitchBuffer EventType = "switch_buffer"
-
 	// Client lifecycle events
-	EventQuit EventType = "quit" // Request to quit the client
+	EventQuit EventType = "quit"
 )
 
 type Event struct {
@@ -72,4 +74,8 @@ func (ep *EventProcessor) Subscribe(eventType EventType, handler Handler) {
 
 func (ep *EventProcessor) Emit(event Event) {
 	ep.eventChan <- event
+}
+
+func (t EventType) String() string {
+	return string(t)
 }

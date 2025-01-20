@@ -1,105 +1,84 @@
 package buffer
 
 import (
-	"strings"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/mmcdole/runes/pkg/client/ansi"
+	"github.com/mmcdole/runes/pkg/client/types"
 )
 
-// Line represents a single line in the buffer
-type Line struct {
-	Content   string    // Processed content with ANSI codes
-	Raw       string    // Original unprocessed content
-	State     string    // ANSI state at start of line
-	Timestamp time.Time // When the line was created
-}
-
-// Buffer stores and manages lines of text
+// Buffer handles storing and retrieving lines of text
 type Buffer struct {
-	lines      []Line
-	processor  *ansi.LineProcessor
-	maxLines   int
-	mu         sync.RWMutex
+	mu          sync.RWMutex
+	lines       []types.Line
+	prompt      *types.Line
+	processor   *ansi.Processor
+	maxLines    int
 }
 
 // New creates a new buffer
-func New() *Buffer {
+func New(maxLines int) *Buffer {
 	return &Buffer{
-		lines:     make([]Line, 0),
-		processor: ansi.NewLineProcessor(),
-		maxLines:  10000, // Store 10k lines max
+		lines:     make([]types.Line, 0),
+		processor: ansi.NewProcessor(),
+		maxLines:  maxLines,
 	}
 }
 
-// Write adds new content to the buffer
-func (b *Buffer) Write(content string) {
+// Write handles both regular lines and prompts
+func (b *Buffer) Write(line *types.Line) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
-	// Normalize line endings
-	content = strings.ReplaceAll(content, "\r\n", "\n")
-	
-	// Split content into lines
-	rawLines := strings.Split(content, "\n")
-	
-	// Process each line
-	for _, rawLine := range rawLines {
-		// Skip empty lines that result from splitting on newlines
-		if rawLine == "" {
-			continue
+
+	// Process ANSI codes
+	line.Display = b.processor.Process(line.Raw)
+
+	if line.IsPrompt {
+		b.prompt = line
+	} else {
+		b.lines = append(b.lines, *line)
+		if len(b.lines) > b.maxLines {
+			b.lines = b.lines[1:]
 		}
-		
-		// Process line through ANSI processor
-		line := b.processor.ProcessLine(rawLine)
-		
-		// Store line with all its metadata
-		b.lines = append(b.lines, Line{
-			Content:   line.Content,
-			Raw:       line.Raw,
-			State:     b.processor.GetCurrentState(),
-			Timestamp: time.Now(),
-		})
-	}
-	
-	// Trim if exceeding max lines
-	if len(b.lines) > b.maxLines {
-		excess := len(b.lines) - b.maxLines
-		// Reset processor state to the state at the first kept line
-		b.processor.Reset()
-		if len(b.lines) > excess {
-			b.processor.SetState(b.lines[excess].State)
-		}
-		b.lines = b.lines[excess:]
 	}
 }
 
-// GetLines returns a slice of lines from the buffer
-func (b *Buffer) GetLines(start, count int) []Line {
+// GetLines returns lines from start to end, including prompt if present at end
+func (b *Buffer) GetLines(start, end int) []types.Line {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	
+	// Validate range
 	if start < 0 {
 		start = 0
 	}
-	if start >= len(b.lines) {
-		return []Line{}
-	}
-	
-	end := start + count
 	if end > len(b.lines) {
 		end = len(b.lines)
 	}
+	if start >= end {
+		return nil
+	}
 	
-	return b.lines[start:end]
+	// Get requested lines
+	lines := make([]types.Line, end-start)
+	copy(lines, b.lines[start:end])
+	
+	// If we're requesting up to the latest line and have a prompt,
+	// include it
+	if end == len(b.lines) && b.prompt != nil {
+		lines = append(lines, *b.prompt)
+	}
+	
+	return lines
 }
 
-// Len returns the number of lines in the buffer
-func (b *Buffer) Len() int {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return len(b.lines)
+// InputSent clears the current prompt
+func (b *Buffer) InputSent() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.prompt = nil
 }
 
 // Clear empties the buffer
@@ -107,5 +86,30 @@ func (b *Buffer) Clear() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.lines = b.lines[:0]
-	b.processor.Reset()
+	b.prompt = nil
+	b.processor = ansi.NewProcessor()
+	log.Printf("[Buffer] Cleared buffer")
+}
+
+// Len returns the number of complete lines in the buffer
+func (b *Buffer) Len() int {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return len(b.lines)
+}
+
+// HandlePrompt creates a prompt line from text
+func (b *Buffer) HandlePrompt(text string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	
+	b.prompt = &types.Line{
+		Raw:       text,
+		Display:   text, // Will be processed by Write
+		IsPrompt:  true,
+		Timestamp: time.Now(),
+	}
+	
+	// Process prompt like any other line
+	b.Write(b.prompt)
 }

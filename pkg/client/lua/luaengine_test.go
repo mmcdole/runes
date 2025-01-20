@@ -1,4 +1,4 @@
-package luaengine
+package lua
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mmcdole/runes/pkg/events"
+	"github.com/mmcdole/runes/pkg/client/events"
 )
 
 // Define the test case type at package level

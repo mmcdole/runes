@@ -9,25 +9,37 @@ Runes is a modern MUD client built in Go with an embedded Lua scripting engine. 
 
 ```
 pkg/
-├── client/           # Core client implementation
-│   ├── buffer/       # Thread-safe line buffer management
-│   ├── viewport/     # Display and window management
-│   └── tui/         # Terminal UI using Bubble Tea
-├── events/          # Event system for inter-component communication
-├── luaengine/       # Lua scripting and event processing
-│   ├── core/        # Built-in core Lua scripts
-│   │   ├── init.lua       # Core initialization
-│   │   ├── input.lua      # Input processing and command splitting
-│   │   ├── alias.lua      # Alias expansion system
-│   │   ├── commands.lua   # Built-in command handlers
-│   │   ├── trigger.lua    # Trigger system
-│   │   ├── timer.lua      # Timer management
-│   │   ├── events.lua     # Event handling
-│   │   └── defaults.lua   # Default settings
-│   └── bindings.go  # Go-Lua bridge and API definitions
-└── protocol/        # Network protocol implementations
-    └── telnet/      # Telnet protocol handler
+├── protocol/          # Network protocol implementations
+│   └── telnet/           # Telnet protocol implementation with IAC command handling
+│                       
+└── client/           # MUD client implementation
+    ├── ansi/             # ANSI escape sequence parsing and color handling
+    ├── buffer/           # Circular buffer for managing output history
+    ├── connection/       # Network connection and line-based output processing
+    ├── events/           # Event dispatcher and handler registration
+    ├── history/          # Command history with search and persistence
+    ├── lua/              # Lua scripting and API integration
+    │   └── core/             # Core Lua scripts and default functionality
+    │       ├── init.lua          # Core initialization and environment setup
+    │       ├── input.lua         # Input processing and command splitting
+    │       ├── alias.lua         # Command alias expansion and management
+    │       ├── commands.lua      # Built-in command implementations
+    │       ├── trigger.lua       # Pattern matching and response system
+    │       ├── timer.lua         # Scheduled event management
+    │       ├── events.lua        # Event registration and dispatch
+    │       └── defaults.lua      # Default client settings
+    │                       
+    ├── terminal/         # Terminal input handling and raw mode management
+    └── ui/               # Terminal user interface
+        ├── components/       # Individual UI elements (input bar, status line, etc)
+        └── layout/           # Screen layout and window management
 ```
+
+### Design Rationale
+1. Most functionality is MUD-client specific and lives under `pkg/client/`
+2. Only telnet protocol handling is truly generic and lives in `pkg/protocol/`
+3. Better organization acknowledges natural coupling between MUD-specific components
+4. Follows Go's standard library patterns (e.g., net/http/httputil)
 
 ## Data Flow Architecture
 
@@ -51,7 +63,8 @@ pkg/
 ### Output Flow (MUD Server → User)
 1. Server Data Reception
    - Protocol handler receives raw server data
-   - Data wrapped in `EventRawOutput`
+   - Data processed by OutputProcessor for line detection
+   - Lines emitted as `EventRawOutput` with prompt detection
    - Passed to output processing pipeline
 
 2. Lua Output Processing
@@ -85,7 +98,15 @@ Efficient line management featuring:
 - History management
 - Line attribute storage
 
-### Viewport (`pkg/client/viewport`)
+### Connection System (`pkg/client/connection`)
+Connection and output processing providing:
+- Telnet connection management
+- Line-based output processing
+- Prompt detection
+- Event emission
+- Buffer management
+
+### UI System (`pkg/client/ui`)
 Display management providing:
 - Window content rendering
 - Scroll position tracking
@@ -93,7 +114,7 @@ Display management providing:
 - Dynamic resizing
 - View attribute handling
 
-### Lua Engine (`pkg/luaengine`)
+### Lua Engine (`pkg/client/lua`)
 Script processing engine offering:
 - Event system bridge
 - Go function bindings
@@ -128,18 +149,22 @@ User Script System:
   * Configuration overrides
 - Persistent between sessions
 
-### Event System
+### Event System (`pkg/client/events`)
 Manages bi-directional communication:
 1. Go Events:
    - `EventRawInput`: User input
    - `EventCommand`: Processed commands
-   - `EventRawOutput`: Server data
+   - `EventRawOutput`: Server data (with line/prompt detection)
    - `EventOutput`: Processed output
    - System events (connect, disconnect, quit)
 
 2. Lua Events:
    - Input processing
    - Output handling
+   - Buffer management
+   - Connection control
+   - Timer operations
+   - Variable management
 
 ## Extension Points
 

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"os"
+	"time"
 )
 
 // Telnet commands (RFC 854)
@@ -117,6 +119,14 @@ func (t *TelnetConnection) Read(p []byte) (int, error) {
 	n, err := t.conn.Read(p)
 	if err != nil {
 		return n, err
+	}
+
+	// Log raw bytes to file
+	if f, err := os.OpenFile("/tmp/telnet.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer f.Close()
+		fmt.Fprintf(f, "\n=== Read %d bytes at %s ===\n", n, time.Now().Format(time.RFC3339))
+		fmt.Fprintf(f, "Raw bytes: %v\n", p[:n])
+		fmt.Fprintf(f, "Hex dump:\n%s\n", hexDump(p[:n]))
 	}
 
 	output := make([]byte, len(p)*2)

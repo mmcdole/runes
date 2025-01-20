@@ -53,7 +53,7 @@ Syntax: %s
         cmd.syntax,
         cmd.description,
         cmd.help or ""
-    ) .. C_RESET)
+    ) .. C_RESET .. "\n")
 end
 
 -- Helper function for state labels (enabled/disabled)
@@ -72,7 +72,7 @@ end
 local function show_syntax(cmd_name)
     local cmd = commands[cmd_name]
     if not cmd then return end
-    runes.output(C_GREEN .. "Syntax: " .. cmd.syntax .. C_RESET)
+    runes.output(C_GREEN .. "Syntax: " .. cmd.syntax .. C_RESET .. "\n")
 end
 
 -- Connection management
@@ -87,7 +87,7 @@ alias.add("^/connect%s*(.*)$", function(matches, line)
     
     port = tonumber(port)
     if port < 1 or port > 65535 then
-        runes.output(C_RED .. "Error: Port must be between 1 and 65535" .. C_RESET)
+        runes.output(C_RED .. "Error: Port must be between 1 and 65535" .. C_RESET .. "\n")
         show_syntax("connect")
         return
     end
@@ -105,9 +105,9 @@ alias.add("^/buffer%s*(.*)$", function(matches, line)
     
     if args == "list" then
         local buffers = mud.list_buffers()
-        runes.output(C_GREEN .. "=== Buffers ===" .. C_RESET)
+        runes.output(C_GREEN .. "=== Buffers ===" .. C_RESET .. "\n")
         for _, buf in ipairs(buffers) do
-            runes.output(C_GREEN .. "- " .. buf .. C_RESET)
+            runes.output(C_GREEN .. "- " .. buf .. C_RESET .. "\n")
         end
         return
     end
@@ -128,7 +128,7 @@ alias.add("^/help%s*(.*)$", function(matches, line)
         if commands[cmd_name] then
             show_command_help(cmd_name)
         else
-            runes.output(C_GREEN .. "Unknown command: " .. cmd_name .. C_RESET)
+            runes.output(C_GREEN .. "Unknown command: " .. cmd_name .. C_RESET .. "\n")
         end
         return
     end
@@ -146,7 +146,7 @@ Available commands:
   /quit           - Quit the client
 
 Type /help <command> for detailed help on a specific command.
-]] .. C_RESET)
+]] .. C_RESET .. "\n")
 end)
 
 -- Load command
@@ -160,20 +160,20 @@ alias.add("^/load%s*(.*)$", function(matches, line)
     -- Load the script using Go binding
     local ok, err = runes.load_script(path)
     if not ok then
-        runes.output(C_RED .. "Error: " .. err .. C_RESET)
+        runes.output(C_RED .. "Error: " .. err .. C_RESET .. "\n")
         return
     end
     
-    runes.output(C_GREEN .. "Successfully loaded script: " .. path .. C_RESET)
+    runes.output(C_GREEN .. "Successfully loaded script: " .. path .. C_RESET .. "\n")
 end)
 
 -- List aliases command
 alias.add("^/aliases$", function(matches, line)
-    runes.output(C_GREEN .. "=== Aliases ===" .. C_RESET)
+    runes.output(C_GREEN .. "=== Aliases ===" .. C_RESET .. "\n")
     local alist = alias.list()
     table.sort(alist)  -- Sort alphabetically
     for _, pattern in ipairs(alist) do
-        runes.output(string.format("%s%s%s %s", 
+        runes.output(string.format("%s%s%s %s\n", 
             C_YELLOW,
             pattern,
             C_RESET,
@@ -184,12 +184,12 @@ end)
 
 -- List triggers command
 alias.add("^/triggers$", function(matches, line)
-    runes.output(C_GREEN .. "=== Triggers ===" .. C_RESET)
+    runes.output(C_GREEN .. "=== Triggers ===" .. C_RESET .. "\n")
     local tlist = trigger.list()
     -- Sort by name
     table.sort(tlist, function(a, b) return a.name < b.name end)
     for _, t in ipairs(tlist) do
-        runes.output(string.format("%-20s : %s%s%s %s",
+        runes.output(string.format("%-20s : %s%s%s %s\n",
             t.name,
             C_YELLOW,
             t.pattern,
