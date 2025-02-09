@@ -16,115 +16,166 @@ func newLuaBindings(engine *LuaEngine) *luaBindings {
 }
 
 // register registers all bindings with Lua
-func (b *luaBindings) register(L *lua.LState) {
+func registerBindings(L *lua.LState, engine *LuaEngine) error {
+	bindings := newLuaBindings(engine)
+	
 	// Create runes table
 	mt := L.NewTable()
 	L.SetGlobal("runes", mt)
 
 	// Register functions
 	L.SetFuncs(mt, map[string]lua.LGFunction{
-		"output":             b.output,
-		"prompt":             b.prompt,
-		"add_output_listener": b.addOutputListener,
-		"add_input_listener":  b.addInputListener,
-		"on_connect":         b.onConnect,
-		"on_disconnect":      b.onDisconnect,
-		"on_reset":          b.onReset,
-		"quit":              b.quit,
+		// Core system bindings
+		"debug":         bindings.debug,
+		"version":       bindings.version,
+		"log":           bindings.log,
+
+		// Connection bindings
+		"connect":       bindings.connect,
+		"disconnect":    bindings.disconnect,
+
+		// Output/Input bindings
+		"output":        bindings.output,
+		"prompt":        bindings.prompt,
+		"send_raw":      bindings.sendCommand,
+
+		// Line processing
+		"add_output_listener": bindings.addOutputListener,
+		"add_input_listener":  bindings.addInputListener,
+
+		// Buffer management
+		"list_buffers":  bindings.listBuffers,
+		"switch_buffer": bindings.switchBuffer,
+
+		// Script management
+		"load_script":   bindings.loadScript,
+		"quit":          bindings.quit,
 	})
+	return nil
 }
 
-// output emits an output event
+// Core system bindings
+func (b *luaBindings) debug(L *lua.LState) int {
+	text := L.ToString(1)
+	b.engine.eventSystem.Emit(events.Event{
+		Type: events.EventDebug,
+		Data: text,
+	})
+	return 0
+}
+
+func (b *luaBindings) version(L *lua.LState) int {
+	L.Push(lua.LString("1.0.0"))
+	return 1
+}
+
+func (b *luaBindings) log(L *lua.LState) int {
+	text := L.ToString(1)
+	b.engine.eventSystem.Emit(events.Event{
+		Type: events.EventLog,
+		Data: text,
+	})
+	return 0
+}
+
+// Connection bindings
+func (b *luaBindings) connect(L *lua.LState) int {
+	host := L.ToString(1)
+	port := L.ToInt(2)
+	b.engine.eventSystem.Emit(events.Event{
+		Type: events.EventConnect,
+		Data: struct {
+			Host string
+			Port int
+		}{host, port},
+	})
+	return 0
+}
+
+func (b *luaBindings) disconnect(L *lua.LState) int {
+	b.engine.eventSystem.Emit(events.Event{
+		Type: events.EventDisconnect,
+	})
+	return 0
+}
+
+// Output/Input bindings
 func (b *luaBindings) output(L *lua.LState) int {
-	text := L.CheckString(1)
+	text := L.ToString(1)
 	line := types.NewLine(text)
-	
-	b.engine.eventSystem.Emit(events.Event{
-		Type: events.EventOutput,
-		Data: line,
-	})
+	if processed := b.engine.ProcessOutput(line); processed != nil {
+		b.engine.eventSystem.Emit(events.Event{
+			Type: events.EventRedraw,
+			Data: processed,
+		})
+	}
 	return 0
 }
 
-// prompt emits a prompt event
 func (b *luaBindings) prompt(L *lua.LState) int {
-	text := L.CheckString(1)
-	line := types.NewLine(text)
-	line.IsPrompt = true
-	
-	b.engine.eventSystem.Emit(events.Event{
-		Type: events.EventPrompt,
-		Data: line,
-	})
+	text := L.ToString(1)
+	line := types.NewPrompt(text)
+	if processed := b.engine.ProcessOutput(line); processed != nil {
+		b.engine.eventSystem.Emit(events.Event{
+			Type: events.EventRedraw,
+			Data: processed,
+		})
+	}
 	return 0
 }
 
-// addOutputListener adds a function to process output lines
+func (b *luaBindings) sendCommand(L *lua.LState) int {
+	text := L.ToString(1)
+	line := types.NewClientLine(text)
+	if processed := b.engine.ProcessInput(line); processed != nil {
+		b.engine.eventSystem.Emit(events.Event{
+			Type: events.EventRedraw,
+			Data: processed,
+		})
+	}
+	return 0
+}
+
+// Line processing
 func (b *luaBindings) addOutputListener(L *lua.LState) int {
 	fn := L.CheckFunction(1)
-	
-	// Get output listener table from registry
-	table := L.GetField(L.Get(lua.RegistryIndex).(*lua.LTable), OutputListenerTable).(*lua.LTable)
-	
-	// Add function to table with next available index
-	table.Append(fn)
-	
+	b.engine.AddOutputProcessor(fn)
 	return 0
 }
 
-// addInputListener adds a function to process input lines
 func (b *luaBindings) addInputListener(L *lua.LState) int {
 	fn := L.CheckFunction(1)
-	
-	// Get input listener table from registry
-	table := L.GetField(L.Get(lua.RegistryIndex).(*lua.LTable), InputListenerTable).(*lua.LTable)
-	
-	// Add function to table with next available index
-	table.Append(fn)
-	
+	b.engine.AddInputProcessor(fn)
 	return 0
 }
 
-// onConnect adds a connect handler
-func (b *luaBindings) onConnect(L *lua.LState) int {
-	fn := L.CheckFunction(1)
-	
-	// Get connect handler table from registry
-	table := L.GetField(L.Get(lua.RegistryIndex).(*lua.LTable), OnConnectTable).(*lua.LTable)
-	
-	// Add function to table with next available index
-	table.Append(fn)
-	
+// Buffer management
+func (b *luaBindings) listBuffers(L *lua.LState) int {
+	b.engine.eventSystem.Emit(events.Event{
+		Type: events.EventListBuffers,
+	})
 	return 0
 }
 
-// onDisconnect adds a disconnect handler
-func (b *luaBindings) onDisconnect(L *lua.LState) int {
-	fn := L.CheckFunction(1)
-	
-	// Get disconnect handler table from registry
-	table := L.GetField(L.Get(lua.RegistryIndex).(*lua.LTable), OnDisconnectTable).(*lua.LTable)
-	
-	// Add function to table with next available index
-	table.Append(fn)
-	
+func (b *luaBindings) switchBuffer(L *lua.LState) int {
+	name := L.ToString(1)
+	b.engine.eventSystem.Emit(events.Event{
+		Type: events.EventSwitchBuffer,
+		Data: name,
+	})
 	return 0
 }
 
-// onReset adds a reset handler
-func (b *luaBindings) onReset(L *lua.LState) int {
-	fn := L.CheckFunction(1)
-	
-	// Get reset handler table from registry
-	table := L.GetField(L.Get(lua.RegistryIndex).(*lua.LTable), ScriptResetTable).(*lua.LTable)
-	
-	// Add function to table with next available index
-	table.Append(fn)
-	
+// Script management
+func (b *luaBindings) loadScript(L *lua.LState) int {
+	path := L.ToString(1)
+	if err := b.engine.loadUserScript(path); err != nil {
+		L.Push(lua.LString(err.Error()))
+		return 1
+	}
 	return 0
 }
 
-// quit exits the application
 func (b *luaBindings) quit(L *lua.LState) int {
 	b.engine.eventSystem.Emit(events.Event{
 		Type: events.EventQuit,
@@ -135,7 +186,4 @@ func (b *luaBindings) quit(L *lua.LState) int {
 const (
 	OutputListenerTable = "outputListeners"
 	InputListenerTable  = "inputListeners"
-	OnConnectTable      = "connectHandlers"
-	OnDisconnectTable   = "disconnectHandlers"
-	ScriptResetTable    = "resetHandlers"
 )

@@ -1,509 +1,238 @@
 package client
 
 import (
-	"fmt"
-	"io"
-	"log"
-	"os"
+    "fmt"
+    "log"
+    "os"
+    "path/filepath"
+    "time"
 
-	"github.com/mmcdole/runes/pkg/client/buffer"
-	"github.com/mmcdole/runes/pkg/client/connection"
-	"github.com/mmcdole/runes/pkg/client/events"
-	"github.com/mmcdole/runes/pkg/client/history"
-	"github.com/mmcdole/runes/pkg/client/lua"
-	"github.com/mmcdole/runes/pkg/client/terminal"
-	"github.com/mmcdole/runes/pkg/client/ui/components"
-	"github.com/mmcdole/runes/pkg/client/ui/layout"
-	"github.com/mmcdole/runes/pkg/protocol/telnet"
+    "github.com/mmcdole/runes/pkg/client/buffer"
+    "github.com/mmcdole/runes/pkg/client/connection"
+    "github.com/mmcdole/runes/pkg/client/events"
+    "github.com/mmcdole/runes/pkg/client/lua"
+    "github.com/mmcdole/runes/pkg/client/types"
+    "github.com/mmcdole/runes/pkg/client/ui/components"
+    "github.com/mmcdole/runes/pkg/client/ui/layout"
 )
 
-// Client represents a MUD client
+// Client represents the MUD client
 type Client struct {
-	// Terminal and UI components
-	term      *terminal.Terminal
-	layout    *layout.Manager
-	buffer    *buffer.Buffer
-	statusBar *components.StatusBar
-	viewport  *components.Viewport
-	inputBar  *components.InputBar
-	history   *history.History
-
-	// Connection handling
-	host string
-	port int
-	conn *telnet.TelnetConnection
-
-	// Event and script handling
-	events *events.EventProcessor
-	lua    *lua.LuaEngine
-
-	// State
-	running bool
-	debug   bool
-	done    chan struct{}
+    // Core components
+    eventSystem events.EventSystem
+    luaEngine   *lua.LuaEngine
+    conn        *connection.Connection
+    
+    // UI components
+    layout    *layout.Layout
+    viewport  *components.Viewport
+    input     *components.Input
+    status    *components.Status
+    
+    // State
+    buffer     *buffer.Buffer
+    scriptPath string
+    quit       bool
 }
 
-// Config holds the client configuration
-type Config struct {
-	Host          string
-	Port          int
-	UserScriptDir string
-	Debug         bool
-}
+// New creates a new client
+func New(scriptPath string) (*Client, error) {
+    // Create client
+    client := &Client{
+        eventSystem: events.New(),
+        scriptPath:  scriptPath,
+        buffer:      buffer.New(10000), // 10k line buffer
+    }
 
-// NewClient creates a new client instance
-func NewClient(userScriptDir string, eventProcessor *events.EventProcessor, config Config, debug bool) (*Client, error) {
-	term := terminal.New()
-	buf := buffer.New()
+    // Create UI layout
+    client.layout = layout.New()
 
-	client := &Client{
-		// Terminal and UI
-		term:   term,
-		buffer: buf,
+    // Create viewport
+    client.viewport = components.NewViewport(client.buffer)
+    if err := client.layout.RegisterComponent("viewport", client.viewport); err != nil {
+        return nil, fmt.Errorf("failed to register viewport: %w", err)
+    }
 
-		// Connection
-		host: config.Host,
-		port: config.Port,
+    // Create input
+    client.input = components.NewInput()
+    if err := client.layout.RegisterComponent("input", client.input); err != nil {
+        return nil, fmt.Errorf("failed to register input: %w", err)
+    }
 
-		// Event handling
-		events: eventProcessor,
-		debug:  debug,
-		done:   make(chan struct{}),
-	}
+    // Create status
+    client.status = components.NewStatus()
+    if err := client.layout.RegisterComponent("status", client.status); err != nil {
+        return nil, fmt.Errorf("failed to register status: %w", err)
+    }
 
-	// Create layout manager with standard policy
-	client.layout = layout.NewManager(layout.NewStandardPolicy())
+    // Create Lua engine
+    var err error
+    client.luaEngine, err = lua.New(client.eventSystem)
+    if err != nil {
+        return nil, fmt.Errorf("failed to create Lua engine: %w", err)
+    }
 
-	client.history = history.New() // Create history instance
+    // Subscribe to events
+    client.subscribeEvents()
 
-	// Create components
-	client.statusBar = components.NewStatusBar(term)
-	client.viewport = components.NewViewport(term, buf)
-
-	client.inputBar = components.NewInputBar(term, client.history)
-
-	// Register components with layout manager
-	client.layout.RegisterComponent(layout.StatusBarType, client.statusBar)
-	client.layout.RegisterComponent(layout.ViewportType, client.viewport)
-	client.layout.RegisterComponent(layout.InputBarType, client.inputBar)
-
-	// Initialize Lua engine
-	if err := client.initializeLua(config); err != nil {
-		return nil, fmt.Errorf("failed to initialize lua engine: %w", err)
-	}
-
-	// Set up event handlers
-	client.setupEventHandlers()
-
-	return client, nil
-}
-
-func (c *Client) initializeLua(config Config) error {
-	engine := lua.New(config.UserScriptDir, c.events)
-	if err := engine.Initialize(); err != nil {
-		return err
-	}
-	c.lua = engine
-	return nil
+    return client, nil
 }
 
 // Run starts the client
 func (c *Client) Run() error {
-	if err := c.term.Init(); err != nil {
-		return fmt.Errorf("failed to initialize terminal: %w", err)
-	}
-	defer c.term.Cleanup()
+    // Load core scripts
+    if err := c.loadCoreScripts(); err != nil {
+        return fmt.Errorf("failed to load core scripts: %w", err)
+    }
 
-	c.running = true
+    // Load user scripts
+    if c.scriptPath != "" {
+        if err := c.loadUserScripts(); err != nil {
+            return fmt.Errorf("failed to load user scripts: %w", err)
+        }
+    }
 
-	// Initialize UI
-	width, height := c.term.Size()
-	c.term.Clear()
-	c.layout.RenderAll(width, height)
-	c.updateStatus("Ready")
+    // Run main loop
+    for !c.quit {
+        // Update UI
+        if err := c.layout.Draw(); err != nil {
+            return fmt.Errorf("failed to draw UI: %w", err)
+        }
 
-	// Input buffer
-	buf := make([]byte, 1024)
+        // Sleep to prevent CPU spinning
+        time.Sleep(16 * time.Millisecond)
+    }
 
-	// Main event loop
-	for c.running {
-		select {
-		case <-c.term.ResizeChan():
-			width, height := c.term.Size()
-			c.layout.HandleResize(width, height)
-			c.updateStatus("Connected")
-		case <-c.done:
-			return nil
-		default:
-			n, err := c.term.Read(buf)
-			if err != nil {
-				if err != io.EOF {
-					return fmt.Errorf("read error: %w", err)
-				}
-				continue
-			}
-			if n > 0 {
-				if err := c.handleInput(buf[:n]); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
+    return nil
 }
 
-// updateStatus updates the status bar text
-func (c *Client) updateStatus(status string) {
-	width, height := c.term.Size()
-	mode := c.viewport.GetMode()
-	c.statusBar.SetText(fmt.Sprintf("Runes - %dx%d - %s - %s", width, height, mode, status))
-}
-
-// handleInput processes all input
-func (c *Client) handleInput(input []byte) error {
-	// Check for special key combinations first
-	if c.handleSpecialKeys(input) {
-		return nil
-	}
-
-	// Let inputbar handle all input
-	handled := c.inputBar.HandleInput(input)
-
-	// If it was handled and it was Enter, send the command
-	if handled && terminal.IsEnter(input) {
-		content := c.inputBar.GetContent()
-		// First emit raw input for Lua processing
-		c.events.Emit(events.Event{
-			Type: events.EventRawInput,
-			Data: content,
-		})
-		c.history.Add(content) // Add command to history
-		c.inputBar.Clear()
-	}
-	return nil
-}
-
-// handleSpecialKeys handles special key combinations
-func (c *Client) handleSpecialKeys(input []byte) bool {
-	// Ctrl+C - quit immediately
-	if terminal.IsCtrlC(input) {
-		c.running = false
-		c.Close()
-		return true
-	}
-
-	// Up/Down arrows for history
-	if terminal.IsUpArrow(input) {
-		if c.inputBar.HandleInput(input) {
-			return true
-		}
-	}
-	if terminal.IsDownArrow(input) {
-		if c.inputBar.HandleInput(input) {
-			return true
-		}
-	}
-
-	// Page Up/Down for viewport scrolling
-	if terminal.IsPageUp(input) {
-		c.viewport.ScrollUp()
-		c.updateStatus("")
-		return true
-	}
-	if terminal.IsPageDown(input) {
-		c.viewport.ScrollDown()
-		c.updateStatus("")
-		return true
-	}
-
-	return false
-}
-
-// handleTelnetOutput processes output from the telnet connection
-func (c *Client) handleTelnetOutput() {
-	if c.conn == nil {
-		return
-	}
-
-	outputProcessor := connection.NewOutputProcessor(c.conn, c.events)
-	outputProcessor.Start()
-	defer outputProcessor.Close()
-
-	<-c.done
-}
-
-// processServerOutput handles a line of server output
-func (c *Client) processServerOutput(line string) {
-	// The line has already been emitted as a raw output event in handleTelnetOutput
-}
-
-// handleCommand handles processed command events
-func (c *Client) handleCommand(e events.Event) {
-	if cmd, ok := e.Data.(string); ok {
-		// Send command to telnet connection
-		if c.conn != nil {
-			c.conn.Write([]byte(cmd + "\n"))
-		}
-	}
-}
-
-// handleProcessedOutput handles processed output events
-func (c *Client) handleProcessedOutput(e events.Event) {
-	if output, ok := e.Data.(struct {
-		Text   string
-		Buffer string
-	}); ok {
-		log.Printf("[Client] Writing processed output: %q", output.Text)
-		// Write the processed output to buffer
-		c.buffer.Write(output.Text)
-		width, height := c.term.Size()
-		c.viewport.UpdateView()
-		c.layout.RenderAll(width, height)
-	}
-}
-
-// handleLog handles log events
-func (c *Client) handleLog(e events.Event) {
-	if msg, ok := e.Data.(string); ok {
-		// Add log prefix with ANSI color
-		c.buffer.Write("\033[1;34mLog:\033[0m " + msg + "\n")
-		c.viewport.UpdateView()
-		width, height := c.term.Size()
-		c.layout.RenderAll(width, height)
-	}
-}
-
-// handleDebug handles debug events
-func (c *Client) handleDebug(e events.Event) {
-	if c.debug {
-		if msg, ok := e.Data.(string); ok {
-			// Add debug prefix with ANSI color
-			c.buffer.Write("\033[1;35mDebug:\033[0m " + msg + "\n")
-			c.viewport.UpdateView()
-			width, height := c.term.Size()
-			c.layout.RenderAll(width, height)
-		}
-	}
-}
-
-// Close closes the client
+// Close cleans up the client
 func (c *Client) Close() {
-	if !c.running {
-		return
-	}
-	c.running = false
-
-	// Close connection first
-	if c.conn != nil {
-		c.conn.Close()
-		c.conn = nil
-	}
-
-	// Close lua engine
-	if c.lua != nil {
-		c.lua.Close()
-	}
-
-	// Close event system
-	if c.events != nil {
-		// Signal quit before closing
-		c.events.Emit(events.Event{
-			Type: events.EventOutput,
-			Data: struct {
-				Text   string
-				Buffer string
-			}{"Goodbye!", ""},
-		})
-	}
-
-	// Reset terminal
-	if c.term != nil {
-		c.term.Cleanup()
-	}
-
-	// Signal all goroutines to stop
-	close(c.done)
+    if c.conn != nil {
+        c.conn.Close()
+    }
+    if c.luaEngine != nil {
+        c.luaEngine.Close()
+    }
 }
 
-// handleConnect handles connection requests
-func (c *Client) handleConnect(e events.Event) {
-	// Already connected
-	if c.conn != nil {
-		return
-	}
+// Event handlers
+func (c *Client) handleInput(event events.Event) {
+    text := event.Data.(string)
 
-	// Get connection parameters from event
-	params, ok := e.Data.(map[string]interface{})
-	if !ok {
-		c.buffer.Write("Invalid connect parameters\n")
-		c.viewport.UpdateView()
-		width, height := c.term.Size()
-		c.layout.RenderAll(width, height)
-		return
-	}
+    // Create line
+    line := types.NewClientLine(text)
 
-	host, ok := params["host"].(string)
-	if !ok {
-		c.buffer.Write("Invalid host parameter\n")
-		c.viewport.UpdateView()
-		width, height := c.term.Size()
-		c.layout.RenderAll(width, height)
-		return
-	}
+    // Process through Lua
+    if processed := c.luaEngine.ProcessInput(line); processed != nil && !processed.Flags.Gag {
+        // Send to server
+        if c.conn != nil {
+            c.conn.Send(processed.Raw)
+        }
 
-	portVal, ok := params["port"].(int)
-	if !ok {
-		c.buffer.Write("Invalid port parameter\n")
-		c.viewport.UpdateView()
-		width, height := c.term.Size()
-		c.layout.RenderAll(width, height)
-		return
-	}
-
-	c.updateStatus("Connecting...")
-	var err error
-	c.conn, err = telnet.NewTelnetConnection(host, portVal, c.debug)
-	if err != nil {
-		c.buffer.Write(fmt.Sprintf("Failed to connect: %v\n", err))
-		c.viewport.UpdateView()
-		width, height := c.term.Size()
-		c.layout.RenderAll(width, height)
-		return
-	}
-
-	// Store successful connection details
-	c.host = host
-	c.port = portVal
-
-	// Start reading from telnet
-	go c.handleTelnetOutput()
-
-	c.updateStatus("Connected")
-	c.events.Emit(events.Event{
-		Type: events.EventConnected,
-	})
+        // Add to buffer
+        c.buffer.Add(processed)
+    }
 }
 
-// handleDisconnect handles disconnect requests
-func (c *Client) handleDisconnect(e events.Event) {
-	if c.conn != nil {
-		c.conn.Close()
-		c.conn = nil
-		c.updateStatus("Disconnected")
-		c.events.Emit(events.Event{
-			Type: events.EventDisconnected,
-		})
-	}
+func (c *Client) handleConnect(event events.Event) {
+    data := event.Data.(struct {
+        Host string
+        Port int
+    })
+
+    // Create connection
+    var err error
+    c.conn, err = connection.New(data.Host, data.Port, c.eventSystem, c.luaEngine)
+    if err != nil {
+        c.status.SetError(fmt.Sprintf("Failed to connect: %v", err))
+        return
+    }
+
+    // Start connection
+    if err := c.conn.Start(); err != nil {
+        c.status.SetError(fmt.Sprintf("Failed to start connection: %v", err))
+        return
+    }
+
+    c.status.SetMessage(fmt.Sprintf("Connected to %s:%d", data.Host, data.Port))
 }
 
-// handleRawInput handles raw input from the client
-func (c *Client) handleRawInput(e events.Event) {
-	// Raw input is already emitted in handleInput, nothing to do here
+func (c *Client) handleDisconnect(event events.Event) {
+    if c.conn != nil {
+        c.conn.Close()
+        c.conn = nil
+    }
+    c.status.SetMessage("Disconnected")
 }
 
-// handleQuit handles quit requests
-func (c *Client) handleQuit(e events.Event) {
-	c.running = false
-	c.Close()
-	// Let Lua handle the goodbye message via output event
-	c.events.Emit(events.Event{
-		Type: events.EventRawOutput,
-		Data: "Goodbye!",
-	})
+func (c *Client) handleQuit(event events.Event) {
+    c.quit = true
 }
 
-func (c *Client) setupEventHandlers() {
-	// Connection events
-	c.events.Subscribe(events.EventConnect, c.handleConnect)
-	c.events.Subscribe(events.EventConnected, c.handleConnected)
-	c.events.Subscribe(events.EventDisconnect, c.handleDisconnect)
-	c.events.Subscribe(events.EventDisconnected, c.handleDisconnected)
-
-	// Processed events from LuaEngine
-	c.events.Subscribe(events.EventCommand, c.handleCommand)
-	c.events.Subscribe(events.EventOutput, c.handleOutput)
-	c.events.Subscribe(events.EventPrompt, c.handlePrompt)
-	c.events.Subscribe(events.EventLog, c.handleLog)
-	c.events.Subscribe(events.EventDebug, c.handleDebug)
-	c.events.Subscribe(events.EventListBuffers, c.handleListBuffers)
-	c.events.Subscribe(events.EventSwitchBuffer, c.handleSwitchBuffer)
-
-	// Client lifecycle
-	c.events.Subscribe(events.EventQuit, c.handleQuit)
+func (c *Client) handleResize(event events.Event) {
+    if err := c.layout.Resize(); err != nil {
+        c.status.SetError(fmt.Sprintf("Failed to resize: %v", err))
+    }
 }
 
-// Connection event handlers
-func (c *Client) handleConnect(e events.Event) {
-	// Handle connect request
+// Helpers
+func (c *Client) loadCoreScripts() error {
+    // Get core script path
+    dir, err := os.Executable()
+    if err != nil {
+        return fmt.Errorf("failed to get executable path: %w", err)
+    }
+    corePath := filepath.Join(filepath.Dir(dir), "core")
+
+    // Load core scripts
+    entries, err := os.ReadDir(corePath)
+    if err != nil {
+        return fmt.Errorf("failed to read core scripts: %w", err)
+    }
+
+    for _, entry := range entries {
+        if !entry.IsDir() && filepath.Ext(entry.Name()) == ".lua" {
+            path := filepath.Join(corePath, entry.Name())
+            if err := c.luaEngine.LoadScript(path); err != nil {
+                return fmt.Errorf("failed to load core script %s: %w", entry.Name(), err)
+            }
+            log.Printf("[Client] Loaded core script: %s", entry.Name())
+        }
+    }
+
+    return nil
 }
 
-func (c *Client) handleConnected(e events.Event) {
-	// Handle connection established
+func (c *Client) loadUserScripts() error {
+    // Load user scripts
+    entries, err := os.ReadDir(c.scriptPath)
+    if err != nil {
+        return fmt.Errorf("failed to read user scripts: %w", err)
+    }
+
+    for _, entry := range entries {
+        if !entry.IsDir() && filepath.Ext(entry.Name()) == ".lua" {
+            path := filepath.Join(c.scriptPath, entry.Name())
+            if err := c.luaEngine.LoadScript(path); err != nil {
+                return fmt.Errorf("failed to load user script %s: %w", entry.Name(), err)
+            }
+            log.Printf("[Client] Loaded user script: %s", entry.Name())
+        }
+    }
+
+    return nil
 }
 
-func (c *Client) handleDisconnect(e events.Event) {
-	// Handle disconnect request
-}
-
-func (c *Client) handleDisconnected(e events.Event) {
-	// Handle connection closed
-}
-
-// Buffer event handlers
-func (c *Client) handleListBuffers(e events.Event) {
-	// Handle list buffers request
-}
-
-func (c *Client) handleSwitchBuffer(e events.Event) {
-	// Handle switch buffer request
-}
-
-// handleOutput handles output events
-func (c *Client) handleOutput(e events.Event) {
-	if line, ok := e.Data.(*connection.Line); ok {
-		c.buffer.Write(*line)
-	}
-	width, height := c.term.Size()
-	c.viewport.UpdateView()
-	c.layout.RenderAll(width, height)
-}
-
-// handleCommand handles command events
-func (c *Client) handleCommand(e events.Event) {
-	if cmd, ok := e.Data.(string); ok {
-		// Send command to telnet connection
-		if c.conn != nil {
-			c.conn.Write([]byte(cmd + "\n"))
-		}
-	}
-}
-
-// handleQuit handles quit events
-func (c *Client) handleQuit(e events.Event) {
-	c.running = false
-	c.Close()
-	// Let Lua handle the goodbye message via output event
-	c.events.Emit(events.Event{
-		Type: events.EventRawOutput,
-		Data: "Goodbye!",
-	})
-}
-
-func (c *Client) handlePrompt(e events.Event) {
-	if text, ok := e.Data.(string); ok {
-		c.buffer.HandlePrompt(text)
-		width, height := c.term.Size()
-		c.viewport.UpdateView()
-		c.layout.RenderAll(width, height)
-	}
-}
-
-func init() {
-	// Set up logging to file
-	f, err := os.OpenFile("/tmp/runes.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	log.SetOutput(f)
+func (c *Client) subscribeEvents() {
+    // Input events
+    c.eventSystem.Subscribe(events.EventInput, c.handleInput)
+    
+    // Connection events
+    c.eventSystem.Subscribe(events.EventConnect, c.handleConnect)
+    c.eventSystem.Subscribe(events.EventDisconnect, c.handleDisconnect)
+    
+    // System events
+    c.eventSystem.Subscribe(events.EventQuit, c.handleQuit)
+    c.eventSystem.Subscribe(events.EventResize, c.handleResize)
 }

@@ -137,19 +137,21 @@ func (v *Viewport) GetMode() ViewportMode {
 func (v *Viewport) Render() {
     // Get lines including prompt if present
     lines := v.buffer.GetLines(v.startLine, v.endLine)
+    startY := v.region.Row + 1
     for i, line := range lines {
-        v.renderLine(i, line)
+        // Skip gagged lines
+        if line.Flags.Gag {
+            continue
+        }
+
+        // Render the line
+        v.renderLine(*line, i+startY)
     }
 }
 
-func (v *Viewport) renderLine(index int, line types.Line) {
-    // Skip gagged lines
-    if line.Gag {
-        return
-    }
-
+func (v *Viewport) renderLine(line types.Line, index int) {
     // Clear line and move cursor
-    output := fmt.Sprintf("\033[%d;%dH\033[K", v.region.Row+index+1, v.region.Col+1)
+    output := fmt.Sprintf("\033[%d;%dH\033[K", index, v.region.Col+1)
     
     // Write display content (already ANSI processed)
     output += line.Display

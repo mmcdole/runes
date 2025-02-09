@@ -74,9 +74,9 @@ func luaLineDisplay(L *lua.LState) int {
 func luaLineGag(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
-        line.line.Gag = L.ToBool(2)
+        line.line.Flags.Gag = L.ToBool(2)
     }
-    L.Push(lua.LBool(line.line.Gag))
+    L.Push(lua.LBool(line.line.Flags.Gag))
     return 1
 }
 
@@ -84,9 +84,9 @@ func luaLineGag(L *lua.LState) int {
 func luaLinePrompt(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
-        line.line.IsPrompt = L.ToBool(2)
+        line.line.Flags.IsPrompt = L.ToBool(2)
     }
-    L.Push(lua.LBool(line.line.IsPrompt))
+    L.Push(lua.LBool(line.line.Flags.IsPrompt))
     return 1
 }
 
@@ -94,9 +94,9 @@ func luaLinePrompt(L *lua.LState) int {
 func luaLineComplete(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
-        line.line.Complete = L.ToBool(2)
+        line.line.Flags.Complete = L.ToBool(2)
     }
-    L.Push(lua.LBool(line.line.Complete))
+    L.Push(lua.LBool(line.line.Flags.Complete))
     return 1
 }
 
@@ -104,9 +104,9 @@ func luaLineComplete(L *lua.LState) int {
 func luaLineMatched(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
-        line.line.Matched = L.ToBool(2)
+        line.line.Flags.Matched = L.ToBool(2)
     }
-    L.Push(lua.LBool(line.line.Matched))
+    L.Push(lua.LBool(line.line.Flags.Matched))
     return 1
 }
 
@@ -114,8 +114,8 @@ func luaLineMatched(L *lua.LState) int {
 func luaLineSkipLog(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
-        line.line.SkipLog = L.ToBool(2)
+        line.line.Flags.SkipLog = L.ToBool(2)
     }
-    L.Push(lua.LBool(line.line.SkipLog))
+    L.Push(lua.LBool(line.line.Flags.SkipLog))
     return 1
 }

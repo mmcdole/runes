@@ -4,31 +4,34 @@ import (
 	"sync"
 )
 
+// EventSystem defines the interface for event handling
+type EventSystem interface {
+	Subscribe(eventType EventType, handler Handler)
+	Emit(event Event)
+}
+
 type EventType string
 
 const (
-	// Raw events (from client/mud)
-	EventRawInput  EventType = "raw_input"  // From client (string)
-	EventRawOutput EventType = "raw_output" // From MUD (*Line)
-	EventRawPrompt EventType = "raw_prompt" // From MUD/Lua (*Line)
-
-	// Processed events (from LuaEngine)
-	EventInput        EventType = "input"  // string
-	EventOutput       EventType = "output" // *Line
-	EventPrompt       EventType = "prompt" // *Line
-	EventLog          EventType = "log"    // string
-	EventDebug        EventType = "debug"  // string
-	EventListBuffers  EventType = "list_buffers"
-	EventSwitchBuffer EventType = "switch_buffer"
-
-	// Connection events
+	// System events
 	EventConnect      EventType = "connect"      // Request to connect
 	EventConnected    EventType = "connected"    // Connection established
 	EventDisconnect   EventType = "disconnect"   // Request to disconnect
 	EventDisconnected EventType = "disconnected" // Connection closed
-
-	// Client lifecycle events
-	EventQuit EventType = "quit"
+	EventQuit         EventType = "quit"         // Quit application
+    
+	// UI events
+	EventRedraw       EventType = "redraw"       // Request UI redraw
+	EventResize       EventType = "resize"       // Terminal resize
+	EventScroll       EventType = "scroll"       // Scroll viewport
+    
+	// Debug/Logging
+	EventLog         EventType = "log"          // Log message
+	EventDebug       EventType = "debug"        // Debug message
+    
+	// Buffer management
+	EventListBuffers  EventType = "list_buffers"
+	EventSwitchBuffer EventType = "switch_buffer"
 )
 
 type Event struct {
@@ -49,7 +52,6 @@ func New() *EventProcessor {
 		eventChan: make(chan Event, 1024),
 		handlers:  make(map[EventType][]Handler),
 	}
-	// Start the dispatch loop
 	go ep.run()
 	return ep
 }
