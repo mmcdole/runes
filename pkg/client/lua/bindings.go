@@ -19,6 +19,9 @@ func newLuaBindings(engine *LuaEngine) *luaBindings {
 func registerBindings(L *lua.LState, engine *LuaEngine) error {
 	bindings := newLuaBindings(engine)
 	
+	// Register types
+	RegisterLine(L)
+	
 	// Create runes table
 	mt := L.NewTable()
 	L.SetGlobal("runes", mt)
@@ -26,35 +29,39 @@ func registerBindings(L *lua.LState, engine *LuaEngine) error {
 	// Register functions
 	L.SetFuncs(mt, map[string]lua.LGFunction{
 		// Core system bindings
-		"debug":         bindings.debug,
-		"version":       bindings.version,
-		"log":           bindings.log,
+		"_debug":         bindings.debug,
+		"_version":       bindings.version,
+		"_log":           bindings.log,
 
 		// Connection bindings
-		"connect":       bindings.connect,
-		"disconnect":    bindings.disconnect,
+		"_connect":       bindings.connect,
+		"_disconnect":    bindings.disconnect,
 
 		// Output/Input bindings
-		"output":        bindings.output,
-		"prompt":        bindings.prompt,
-		"send_raw":      bindings.sendCommand,
+		"_output":        bindings.output,
+		"_prompt":        bindings.prompt,
+		"_send":          bindings.send,
+		"_send_raw":      bindings.sendCommand,
 
-		// Line processing
-		"add_output_listener": bindings.addOutputListener,
-		"add_input_listener":  bindings.addInputListener,
+		// Processor bindings
+		"_add_output_processor": bindings.addOutputProcessor,
+		"_add_input_processor":  bindings.addInputProcessor,
 
 		// Buffer management
-		"list_buffers":  bindings.listBuffers,
-		"switch_buffer": bindings.switchBuffer,
+		"_list_buffers":  bindings.listBuffers,
+		"_switch_buffer": bindings.switchBuffer,
 
 		// Script management
-		"load_script":   bindings.loadScript,
-		"quit":          bindings.quit,
+		"_load_script":   bindings.loadScript,
+		"_quit":          bindings.quit,
 	})
 	return nil
 }
 
 // Core system bindings
+
+// debug prints a debug message to the console
+// Lua syntax: runes._debug(text)
 func (b *luaBindings) debug(L *lua.LState) int {
 	text := L.ToString(1)
 	b.engine.eventSystem.Emit(events.Event{
@@ -64,11 +71,15 @@ func (b *luaBindings) debug(L *lua.LState) int {
 	return 0
 }
 
+// version returns the version of Runes
+// Lua syntax: runes._version() -> string
 func (b *luaBindings) version(L *lua.LState) int {
 	L.Push(lua.LString("1.0.0"))
 	return 1
 }
 
+// log prints a log message to the console
+// Lua syntax: runes._log(text)
 func (b *luaBindings) log(L *lua.LState) int {
 	text := L.ToString(1)
 	b.engine.eventSystem.Emit(events.Event{
@@ -79,6 +90,9 @@ func (b *luaBindings) log(L *lua.LState) int {
 }
 
 // Connection bindings
+
+// connect connects to a server
+// Lua syntax: runes._connect(host, port)
 func (b *luaBindings) connect(L *lua.LState) int {
 	host := L.ToString(1)
 	port := L.ToInt(2)
@@ -92,6 +106,8 @@ func (b *luaBindings) connect(L *lua.LState) int {
 	return 0
 }
 
+// disconnect disconnects from the server
+// Lua syntax: runes._disconnect()
 func (b *luaBindings) disconnect(L *lua.LState) int {
 	b.engine.eventSystem.Emit(events.Event{
 		Type: events.EventDisconnect,
@@ -100,22 +116,41 @@ func (b *luaBindings) disconnect(L *lua.LState) int {
 }
 
 // Output/Input bindings
+
+// output sends text to the output window
+// Lua syntax: runes._output(text)
 func (b *luaBindings) output(L *lua.LState) int {
 	text := L.ToString(1)
 	line := types.NewLine(text)
+	
+	// Process the line through output processors
 	if processed := b.engine.ProcessOutput(line); processed != nil {
-		b.engine.eventSystem.Emit(events.Event{
-			Type: events.EventRedraw,
-			Data: processed,
-		})
+		// Add to the output buffer instead of emitting directly
+		b.engine.addOutputLine(processed)
 	}
 	return 0
 }
 
+// prompt sends a prompt to the output window
+// Lua syntax: runes._prompt(text)
 func (b *luaBindings) prompt(L *lua.LState) int {
 	text := L.ToString(1)
 	line := types.NewPrompt(text)
+	
+	// Process the line through output processors
 	if processed := b.engine.ProcessOutput(line); processed != nil {
+		// Add to the output buffer instead of emitting directly
+		b.engine.addOutputLine(processed)
+	}
+	return 0
+}
+
+// send sends text to the server
+// Lua syntax: runes._send(text)
+func (b *luaBindings) send(L *lua.LState) int {
+	text := L.ToString(1)
+	line := types.NewClientLine(text)
+	if processed := b.engine.ProcessInput(line); processed != nil {
 		b.engine.eventSystem.Emit(events.Event{
 			Type: events.EventRedraw,
 			Data: processed,
@@ -124,6 +159,8 @@ func (b *luaBindings) prompt(L *lua.LState) int {
 	return 0
 }
 
+// sendCommand sends a raw command to the server
+// Lua syntax: runes._send_raw(text)
 func (b *luaBindings) sendCommand(L *lua.LState) int {
 	text := L.ToString(1)
 	line := types.NewClientLine(text)
@@ -136,20 +173,10 @@ func (b *luaBindings) sendCommand(L *lua.LState) int {
 	return 0
 }
 
-// Line processing
-func (b *luaBindings) addOutputListener(L *lua.LState) int {
-	fn := L.CheckFunction(1)
-	b.engine.AddOutputProcessor(fn)
-	return 0
-}
-
-func (b *luaBindings) addInputListener(L *lua.LState) int {
-	fn := L.CheckFunction(1)
-	b.engine.AddInputProcessor(fn)
-	return 0
-}
-
 // Buffer management
+
+// listBuffers lists all buffers
+// Lua syntax: runes._list_buffers()
 func (b *luaBindings) listBuffers(L *lua.LState) int {
 	b.engine.eventSystem.Emit(events.Event{
 		Type: events.EventListBuffers,
@@ -157,6 +184,8 @@ func (b *luaBindings) listBuffers(L *lua.LState) int {
 	return 0
 }
 
+// switchBuffer switches to a buffer
+// Lua syntax: runes._switch_buffer(name)
 func (b *luaBindings) switchBuffer(L *lua.LState) int {
 	name := L.ToString(1)
 	b.engine.eventSystem.Emit(events.Event{
@@ -166,7 +195,28 @@ func (b *luaBindings) switchBuffer(L *lua.LState) int {
 	return 0
 }
 
+// Processor bindings
+
+// addOutputProcessor adds an output processor
+// Lua syntax: runes._add_output_processor(function(line) ... end)
+func (b *luaBindings) addOutputProcessor(L *lua.LState) int {
+	fn := L.CheckFunction(1)
+	b.engine.addOutputProcessor(fn)
+	return 0
+}
+
+// addInputProcessor adds an input processor
+// Lua syntax: runes._add_input_processor(function(line) ... end)
+func (b *luaBindings) addInputProcessor(L *lua.LState) int {
+	fn := L.CheckFunction(1)
+	b.engine.addInputProcessor(fn)
+	return 0
+}
+
 // Script management
+
+// loadScript loads a script
+// Lua syntax: runes._load_script(path) -> error or nil
 func (b *luaBindings) loadScript(L *lua.LState) int {
 	path := L.ToString(1)
 	if err := b.engine.loadUserScript(path); err != nil {
@@ -176,14 +226,11 @@ func (b *luaBindings) loadScript(L *lua.LState) int {
 	return 0
 }
 
+// quit quits the application
+// Lua syntax: runes._quit()
 func (b *luaBindings) quit(L *lua.LState) int {
 	b.engine.eventSystem.Emit(events.Event{
 		Type: events.EventQuit,
 	})
 	return 0
 }
-
-const (
-	OutputListenerTable = "outputListeners"
-	InputListenerTable  = "inputListeners"
-)

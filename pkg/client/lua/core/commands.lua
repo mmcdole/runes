@@ -16,7 +16,7 @@ local commands = {
         description = "Quit the client"
     },
     buffer = {
-        syntax = "/buffer <list|switch <name>>",
+        syntax = "/buffer <list|switch <n>>",
         description = "Buffer management commands",
         help = "Examples:\n  /buffer list\n  /buffer switch system"
     },

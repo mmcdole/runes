@@ -1,0 +1,550 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Runes MUD Client API Documentation</title>
+    <link rel="stylesheet" href="../ldoc_pale.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>Runes MUD Client</h1>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><strong>runes</strong></li>
+  <li><a href="../modules/trigger.html">trigger</a></li>
+  <li><a href="../modules/alias.html">alias</a></li>
+  <li><a href="../modules/events.html">events</a></li>
+  <li><a href="../modules/timer.html">timer</a></li>
+  <li><a href="../modules/input.html">input</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/api_usage.lua.html">api_usage.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>runes</code></h1>
+<p>Core Module
+ This module provides the core functionality for the Runes MUD client,
+ including connection management, input/output handling, and script loading.</p>
+<p> It serves as the main entry point for interacting with the Runes API.</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#debug">debug (text)</a></td>
+	<td class="summary">Prints a debug message to the console.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#version">version ()</a></td>
+	<td class="summary">Returns the version of the Runes MUD client.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#log">log (text)</a></td>
+	<td class="summary">Prints a log message to the console.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connect">connect (host, port)</a></td>
+	<td class="summary">Connects to a MUD server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#disconnect">disconnect ()</a></td>
+	<td class="summary">Disconnects from the current server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#output">output (text)</a></td>
+	<td class="summary">Sends text to the output window.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#prompt">prompt (text)</a></td>
+	<td class="summary">Sends a prompt to the output window.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#send">send (text)</a></td>
+	<td class="summary">Sends text to the server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#send_raw">send_raw (text)</a></td>
+	<td class="summary">Sends a raw command to the server without any processing.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#add_output_processor">add_output_processor (processor)</a></td>
+	<td class="summary">Adds a function to process output lines.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#add_input_processor">add_input_processor (processor)</a></td>
+	<td class="summary">Adds a function to process input lines.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#list_buffers">list_buffers ()</a></td>
+	<td class="summary">Lists all available buffers.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#switch_buffer">switch_buffer (name)</a></td>
+	<td class="summary">Switches to a specific buffer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#load_script">load_script (path)</a></td>
+	<td class="summary">Loads a Lua script from the specified path.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#quit">quit ()</a></td>
+	<td class="summary">Quits the Runes application.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#import">import (...)</a></td>
+	<td class="summary">Makes Runes modules available in the global scope to reduce typing.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "debug"></a>
+    <strong>debug (text)</strong>
+    </dt>
+    <dd>
+    Prints a debug message to the console.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">text</span>
+         The text to print as a debug message
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="global">debug</span>(<span class="string">"Debug information"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "version"></a>
+    <strong>version ()</strong>
+    </dt>
+    <dd>
+    Returns the version of the Runes MUD client.
+
+    </ul>
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string The version string
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> version = runes.<span class="function-name">version</span>()</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "log"></a>
+    <strong>log (text)</strong>
+    </dt>
+    <dd>
+    Prints a log message to the console.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">text</span>
+         The text to log
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">log</span>(<span class="string">"Log information"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "connect"></a>
+    <strong>connect (host, port)</strong>
+    </dt>
+    <dd>
+    Connects to a MUD server.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">host</span>
+         The hostname or IP address of the server
+        </li>
+        <li><span class="parameter">port</span>
+         The port number to connect to
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">connect</span>(<span class="string">"example.com"</span>, <span class="number">4000</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "disconnect"></a>
+    <strong>disconnect ()</strong>
+    </dt>
+    <dd>
+    Disconnects from the current server.
+
+    </ul>
+
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">disconnect</span>()</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "output"></a>
+    <strong>output (text)</strong>
+    </dt>
+    <dd>
+    Sends text to the output window.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">text</span>
+         The text to display
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">output</span>(<span class="string">"Hello, world!"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "prompt"></a>
+    <strong>prompt (text)</strong>
+    </dt>
+    <dd>
+    Sends a prompt to the output window.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">text</span>
+         The prompt text to display
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">prompt</span>(<span class="string">"&gt; "</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "send"></a>
+    <strong>send (text)</strong>
+    </dt>
+    <dd>
+    Sends text to the server.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">text</span>
+         The text to send
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">send</span>(<span class="string">"look"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "send_raw"></a>
+    <strong>send_raw (text)</strong>
+    </dt>
+    <dd>
+    Sends a raw command to the server without any processing.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">text</span>
+         The raw text to send
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">send_raw</span>(<span class="string">"look"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "add_output_processor"></a>
+    <strong>add_output_processor (processor)</strong>
+    </dt>
+    <dd>
+    Adds a function to process output lines.
+ The processor function receives a line object and should return a line object or nil.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">processor</span>
+         The processor function
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">add_output_processor</span>(<span class="keyword">function</span>(line)
+    line:<span class="function-name">gag</span>(<span class="keyword">true</span>) <span class="comment">-- Hide this line
+</span>    <span class="keyword">return</span> line
+<span class="keyword">end</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "add_input_processor"></a>
+    <strong>add_input_processor (processor)</strong>
+    </dt>
+    <dd>
+    Adds a function to process input lines.
+ The processor function receives a line object and should return a line object or nil.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">processor</span>
+         The processor function
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">add_input_processor</span>(<span class="keyword">function</span>(line)
+    <span class="comment">-- Process input line
+</span>    <span class="keyword">return</span> line
+<span class="keyword">end</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "list_buffers"></a>
+    <strong>list_buffers ()</strong>
+    </dt>
+    <dd>
+    Lists all available buffers.
+
+    </ul>
+
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">list_buffers</span>()</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "switch_buffer"></a>
+    <strong>switch_buffer (name)</strong>
+    </dt>
+    <dd>
+    Switches to a specific buffer.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">name</span>
+         The name of the buffer to switch to
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">switch_buffer</span>(<span class="string">"main"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "load_script"></a>
+    <strong>load_script (path)</strong>
+    </dt>
+    <dd>
+    Loads a Lua script from the specified path.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+         The path to the script file
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        error or nil If there was an error loading the script, returns the error message
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> err = runes.<span class="function-name">load_script</span>(<span class="string">"scripts/my_script.lua"</span>)
+ <span class="keyword">if</span> err <span class="keyword">then</span> runes.<span class="function-name">log</span>(<span class="string">"Error: "</span> .. err) <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "quit"></a>
+    <strong>quit ()</strong>
+    </dt>
+    <dd>
+    Quits the Runes application.
+
+    </ul>
+
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">quit</span>()</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "import"></a>
+    <strong>import (...)</strong>
+    </dt>
+    <dd>
+    Makes Runes modules available in the global scope to reduce typing.
+ This function allows you to import specific modules into the global scope.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         string Names of modules to import (e.g., "trigger", "alias")
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.<span class="function-name">import</span>(<span class="string">"trigger"</span>, <span class="string">"alias"</span>) <span class="comment">-- Makes trigger and alias global</span></pre>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/LDoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2025-03-02 13:44:12 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

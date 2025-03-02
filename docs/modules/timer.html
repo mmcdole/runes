@@ -1,0 +1,261 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Runes MUD Client API Documentation</title>
+    <link rel="stylesheet" href="../ldoc_pale.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>Runes MUD Client</h1>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/runes.html">runes</a></li>
+  <li><a href="../modules/trigger.html">trigger</a></li>
+  <li><a href="../modules/alias.html">alias</a></li>
+  <li><a href="../modules/events.html">events</a></li>
+  <li><strong>timer</strong></li>
+  <li><a href="../modules/input.html">input</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/api_usage.lua.html">api_usage.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>timer</code></h1>
+<p>Timer System
+ This module provides functionality for creating and managing timers
+ that execute functions at specified intervals.</p>
+<p>
+
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#runes.timer.add">runes.timer.add (interval, callback, repeating)</a></td>
+	<td class="summary">Adds a new timer that executes a function at specified intervals.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.timer.remove">runes.timer.remove (id)</a></td>
+	<td class="summary">Removes a timer by its ID.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.timer.enable">runes.timer.enable (id)</a></td>
+	<td class="summary">Enables a timer that was previously disabled.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.timer.disable">runes.timer.disable (id)</a></td>
+	<td class="summary">Disables a timer without removing it.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.timer.list">runes.timer.list ()</a></td>
+	<td class="summary">Lists all active timers.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "runes.timer.add"></a>
+    <strong>runes.timer.add (interval, callback, repeating)</strong>
+    </dt>
+    <dd>
+    Adds a new timer that executes a function at specified intervals.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">interval</span>
+         number Time in milliseconds between executions
+        </li>
+        <li><span class="parameter">callback</span>
+         function Function to execute when the timer fires
+        </li>
+        <li><span class="parameter">repeating</span>
+         boolean If true, timer will continue executing until removed
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        number Timer ID that can be used to remove or modify the timer
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> timerId = runes.timer.<span class="function-name">add</span>(<span class="number">1000</span>, <span class="keyword">function</span>()
+    runes.<span class="function-name">output</span>(<span class="string">"One second has passed!"</span>)
+<span class="keyword">end</span>, <span class="keyword">true</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.timer.remove"></a>
+    <strong>runes.timer.remove (id)</strong>
+    </dt>
+    <dd>
+    Removes a timer by its ID.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id</span>
+         number The ID of the timer to remove
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        boolean True if the timer was found and removed, false otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.timer.<span class="function-name">remove</span>(timerId)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.timer.enable"></a>
+    <strong>runes.timer.enable (id)</strong>
+    </dt>
+    <dd>
+    Enables a timer that was previously disabled.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id</span>
+         number The ID of the timer to enable
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        boolean True if the timer was found and enabled, false otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.timer.<span class="function-name">enable</span>(timerId)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.timer.disable"></a>
+    <strong>runes.timer.disable (id)</strong>
+    </dt>
+    <dd>
+    Disables a timer without removing it.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id</span>
+         number The ID of the timer to disable
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        boolean True if the timer was found and disabled, false otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.timer.<span class="function-name">disable</span>(timerId)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.timer.list"></a>
+    <strong>runes.timer.list ()</strong>
+    </dt>
+    <dd>
+    Lists all active timers.
+
+    </ul>
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        table A list of timer IDs and their properties
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> timerList = runes.timer.<span class="function-name">list</span>()</pre>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/LDoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2025-03-02 13:44:12 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Runes MUD Client API Documentation</title>
+    <link rel="stylesheet" href="../ldoc_pale.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>Runes MUD Client</h1>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/runes.html">runes</a></li>
+  <li><strong>trigger</strong></li>
+  <li><a href="../modules/alias.html">alias</a></li>
+  <li><a href="../modules/events.html">events</a></li>
+  <li><a href="../modules/timer.html">timer</a></li>
+  <li><a href="../modules/input.html">input</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/api_usage.lua.html">api_usage.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>trigger</code></h1>
+<p>Trigger System
+ This module provides functionality for creating and managing triggers
+ that respond to patterns in the MUD output.</p>
+<p>
+
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#runes.trigger.add">runes.trigger.add (name, pattern, options, callback)</a></td>
+	<td class="summary">Adds a new trigger that responds to a pattern in the MUD output.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.trigger.remove">runes.trigger.remove (id_or_name)</a></td>
+	<td class="summary">Removes a trigger by its ID or name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.trigger.enable">runes.trigger.enable (id_or_name)</a></td>
+	<td class="summary">Enables a trigger by its ID or name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.trigger.disable">runes.trigger.disable (id_or_name)</a></td>
+	<td class="summary">Disables a trigger by its ID or name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.trigger.get">runes.trigger.get (id_or_name)</a></td>
+	<td class="summary">Gets a trigger by its ID or name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.trigger.list">runes.trigger.list ()</a></td>
+	<td class="summary">Lists all triggers.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.trigger.clear">runes.trigger.clear ()</a></td>
+	<td class="summary">Clears all triggers.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "runes.trigger.add"></a>
+    <strong>runes.trigger.add (name, pattern, options, callback)</strong>
+    </dt>
+    <dd>
+    Adds a new trigger that responds to a pattern in the MUD output.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">name</span>
+         string Name of the trigger for reference
+        </li>
+        <li><span class="parameter">pattern</span>
+         string Lua pattern to match against incoming text
+        </li>
+        <li><span class="parameter">options</span>
+         table|function Optional table of settings or the callback function
+        </li>
+        <li><span class="parameter">callback</span>
+         function Function to call when pattern matches (if options provided)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        number Unique ID of the created trigger
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.trigger.<span class="function-name">add</span>(<span class="string">"hp_watch"</span>, <span class="string">"HP: (%d+)/(%d+)"</span>, <span class="keyword">function</span>(matches, line)
+   <span class="keyword">if</span> <span class="global">tonumber</span>(matches[<span class="number">1</span>]) &lt; <span class="number">100</span> <span class="keyword">then</span>
+       runes.<span class="function-name">output</span>(<span class="string">"Low health warning!"</span>)
+   <span class="keyword">end</span>
+<span class="keyword">end</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.trigger.remove"></a>
+    <strong>runes.trigger.remove (id_or_name)</strong>
+    </dt>
+    <dd>
+    Removes a trigger by its ID or name.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id_or_name</span>
+         number|string The ID or name of the trigger to remove
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        boolean True if the trigger was found and removed, false otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">runes.trigger.<span class="function-name">remove</span>(<span class="number">5</span>)  <span class="comment">-- Remove by ID</span></pre></li>
+        <li><pre class="example">runes.trigger.<span class="function-name">remove</span>(<span class="string">"hp_watch"</span>)  <span class="comment">-- Remove by name</span></pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.trigger.enable"></a>
+    <strong>runes.trigger.enable (id_or_name)</strong>
+    </dt>
+    <dd>
+    Enables a trigger by its ID or name.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id_or_name</span>
+         number|string The ID or name of the trigger to enable
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        boolean True if the trigger was found and enabled, false otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">runes.trigger.<span class="function-name">enable</span>(<span class="number">5</span>)</pre></li>
+        <li><pre class="example">runes.trigger.<span class="function-name">enable</span>(<span class="string">"hp_watch"</span>)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.trigger.disable"></a>
+    <strong>runes.trigger.disable (id_or_name)</strong>
+    </dt>
+    <dd>
+    Disables a trigger by its ID or name.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id_or_name</span>
+         number|string The ID or name of the trigger to disable
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        boolean True if the trigger was found and disabled, false otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">runes.trigger.<span class="function-name">disable</span>(<span class="number">5</span>)</pre></li>
+        <li><pre class="example">runes.trigger.<span class="function-name">disable</span>(<span class="string">"hp_watch"</span>)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.trigger.get"></a>
+    <strong>runes.trigger.get (id_or_name)</strong>
+    </dt>
+    <dd>
+    Gets a trigger by its ID or name.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id_or_name</span>
+         number|string The ID or name of the trigger to retrieve
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        table|nil The trigger table if found, nil otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example"><span class="keyword">local</span> trigger = runes.trigger.<span class="function-name">get</span>(<span class="number">5</span>)</pre></li>
+        <li><pre class="example"><span class="keyword">local</span> trigger = runes.trigger.<span class="function-name">get</span>(<span class="string">"hp_watch"</span>)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.trigger.list"></a>
+    <strong>runes.trigger.list ()</strong>
+    </dt>
+    <dd>
+    Lists all triggers.
+
+    </ul>
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        table Array of trigger information tables
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> all_triggers = runes.trigger.<span class="function-name">list</span>()
+<span class="keyword">for</span> _, t <span class="keyword">in</span> <span class="global">ipairs</span>(all_triggers) <span class="keyword">do</span>
+    runes.<span class="function-name">output</span>(<span class="global">string</span>.<span class="function-name">format</span>(<span class="string">"Trigger: %s (ID: %d)"</span>, t.name, t.id))
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.trigger.clear"></a>
+    <strong>runes.trigger.clear ()</strong>
+    </dt>
+    <dd>
+    Clears all triggers.
+
+    </ul>
+
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.trigger.<span class="function-name">clear</span>()</pre>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/LDoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2025-03-02 13:44:12 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

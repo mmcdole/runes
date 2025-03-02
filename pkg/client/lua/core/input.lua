@@ -1,4 +1,9 @@
--- core/input.lua
+--- Input System
+-- This module provides functionality for managing user input and command processing.
+-- @module input
+
+-- Initialize the input namespace
+runes.input = runes.input or {}
 local commandQueue = {}
 local commandSeparator = commandSeparator or ";"
 
@@ -45,14 +50,19 @@ local function enqueue(commandStr)
 end
 
 -- Public API
-function runes.send(commandStr)
+function runes.input.send(commandStr)
     -- Echo command with green prompt
     runes.output(C_YELLOW .. "> " .. commandStr .. C_RESET .. "\n")
     enqueue(commandStr)
 end
 
--- Subscribe to input events directly
-events.add("input", function(input)
-    table.insert(commandQueue, input)
+-- Process input lines
+local function process_input(line)
+    local content = line:raw()
+    table.insert(commandQueue, content)
     processCommandQueue()
-end) 
+    return line
+end
+
+-- Register with the input processor system
+runes.add_input_listener(process_input)

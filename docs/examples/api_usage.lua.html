@@ -1,0 +1,129 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Runes MUD Client API Documentation</title>
+    <link rel="stylesheet" href="../ldoc_pale.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>Runes MUD Client</h1>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+
+
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><strong>api_usage.lua</strong></li>
+</ul>
+<h2>API Reference</h2>
+<ul class="nowrap">
+  <li><a href="../api reference/runes.html">runes</a></li>
+  <li><a href="../api reference/trigger.html">trigger</a></li>
+  <li><a href="../api reference/alias.html">alias</a></li>
+  <li><a href="../api reference/events.html">events</a></li>
+  <li><a href="../api reference/timer.html">timer</a></li>
+  <li><a href="../api reference/input.html">input</a></li>
+</ul>
+<h2>Commands</h2>
+<ul class="nowrap">
+  <li><a href="../commands/commands_doc.lua.html">commands_doc</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+    <h2>api_usage.lua</h2>
+<pre>
+<span class="comment">--[[
+Runes MUD Client - API Usage Example
+
+This example demonstrates different ways to use the Runes API.
+]]</span>
+
+<span class="comment">-- Method 1: Use the full namespace (most verbose but clearest)
+</span>runes.<span class="function-name">output</span>(<span class="string">"Method 1: Using full namespace"</span>)
+
+runes.trigger.<span class="function-name">add</span>(<span class="string">"hp_watch"</span>, <span class="string">"HP: (%d+)/(%d+)"</span>, <span class="keyword">function</span>(matches, line)
+    <span class="keyword">local</span> current = <span class="global">tonumber</span>(matches[<span class="number">1</span>])
+    <span class="keyword">local</span> max = <span class="global">tonumber</span>(matches[<span class="number">2</span>])
+    <span class="keyword">if</span> current &lt; max * <span class="number">0.3</span> <span class="keyword">then</span>
+        runes.<span class="function-name">output</span>(<span class="string">"LOW HEALTH WARNING!"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>)
+
+runes.alias.<span class="function-name">add</span>(<span class="string">"^hp$"</span>, <span class="string">"look at health"</span>)
+
+<span class="comment">-- Method 2: Using local variables (recommended)
+</span>runes.<span class="function-name">output</span>(<span class="string">"\nMethod 2: Using local variables"</span>)
+
+<span class="keyword">local</span> trigger = runes.trigger
+<span class="keyword">local</span> alias = runes.alias
+
+trigger.<span class="function-name">add</span>(<span class="string">"mana_watch"</span>, <span class="string">"MP: (%d+)/(%d+)"</span>, <span class="keyword">function</span>(matches, line)
+    <span class="keyword">local</span> current = <span class="global">tonumber</span>(matches[<span class="number">1</span>])
+    <span class="keyword">local</span> max = <span class="global">tonumber</span>(matches[<span class="number">2</span>])
+    <span class="keyword">if</span> current &lt; max * <span class="number">0.3</span> <span class="keyword">then</span>
+        runes.<span class="function-name">output</span>(<span class="string">"LOW MANA WARNING!"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>)
+
+alias.<span class="function-name">add</span>(<span class="string">"^mp$"</span>, <span class="string">"look at mana"</span>)
+
+<span class="comment">-- Method 3: Using the import helper (creates globals)
+</span>runes.<span class="function-name">output</span>(<span class="string">"\nMethod 3: Using the import helper"</span>)
+
+<span class="comment">-- Import modules into global scope
+</span>runes.<span class="function-name">import</span>(<span class="string">"events"</span>, <span class="string">"trigger"</span>, <span class="string">"alias"</span>)
+
+<span class="comment">-- Now events, trigger, and alias are available globally
+</span>events.<span class="function-name">add</span>(<span class="string">"custom_event"</span>, <span class="keyword">function</span>(data)
+    runes.<span class="function-name">output</span>(<span class="string">"Custom event received: "</span> .. data.message)
+<span class="keyword">end</span>)
+
+<span class="comment">-- Trigger the custom event
+</span>events.<span class="function-name">emit</span>(<span class="string">"custom_event"</span>, { message = <span class="string">"Hello from the event system!"</span> })
+
+trigger.<span class="function-name">add</span>(<span class="string">"gold_watch"</span>, <span class="string">"Gold: (%d+)"</span>, <span class="keyword">function</span>(matches, line)
+    <span class="keyword">local</span> gold = <span class="global">tonumber</span>(matches[<span class="number">1</span>])
+    <span class="keyword">if</span> gold &gt; <span class="number">1000</span> <span class="keyword">then</span>
+        runes.<span class="function-name">output</span>(<span class="string">"You're rich!"</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>)
+
+<span class="comment">-- Clean up our example triggers
+</span>runes.<span class="function-name">output</span>(<span class="string">"\nCleaning up example triggers"</span>)
+runes.trigger.<span class="function-name">clear</span>()</pre>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/LDoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2025-03-02 13:50:39 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

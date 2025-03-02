@@ -1,0 +1,322 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Runes MUD Client API Documentation</title>
+    <link rel="stylesheet" href="../ldoc_pale.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>Runes MUD Client</h1>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/runes.html">runes</a></li>
+  <li><a href="../modules/trigger.html">trigger</a></li>
+  <li><strong>alias</strong></li>
+  <li><a href="../modules/events.html">events</a></li>
+  <li><a href="../modules/timer.html">timer</a></li>
+  <li><a href="../modules/input.html">input</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/api_usage.lua.html">api_usage.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>alias</code></h1>
+<p>Alias System
+ This module provides functionality for creating and managing aliases
+ that transform user input before sending it to the server.</p>
+<p>
+
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#runes.alias.add">runes.alias.add (pattern, callback)</a></td>
+	<td class="summary">Adds a new alias with a regex pattern.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.alias.exact">runes.alias.exact (text, callback)</a></td>
+	<td class="summary">Creates an alias that matches text exactly.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.alias.any">runes.alias.any (texts, callback)</a></td>
+	<td class="summary">Creates an alias that matches any of the provided texts exactly.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.alias.starts">runes.alias.starts (prefix, callback)</a></td>
+	<td class="summary">Creates an alias that matches text starting with the given prefix.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.alias.resolve">runes.alias.resolve (input)</a></td>
+	<td class="summary">Attempts to match input against registered aliases.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.alias.remove">runes.alias.remove (pattern)</a></td>
+	<td class="summary">Removes an alias by its pattern.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.alias.list">runes.alias.list ()</a></td>
+	<td class="summary">Returns a list of all defined aliases.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "runes.alias.add"></a>
+    <strong>runes.alias.add (pattern, callback)</strong>
+    </dt>
+    <dd>
+    Adds a new alias with a regex pattern.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">pattern</span>
+         string The Lua pattern to match against input
+        </li>
+        <li><span class="parameter">callback</span>
+
+<p> function|string Function or string to execute when matched.</p>
+<pre><code>             If string: sends the string as a command
+             If function: called with (matches, input) arguments
+</code></pre>
+
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">runes.alias.<span class="function-name">add</span>(<span class="string">"^hp$"</span>, <span class="string">"look at health"</span>)</pre></li>
+        <li><pre class="example">runes.alias.<span class="function-name">add</span>(<span class="string">"^cast (.+) at (.+)$"</span>, <span class="keyword">function</span>(matches, input)
+    runes.<span class="function-name">send</span>(<span class="string">"cast "</span> .. matches[<span class="number">1</span>] .. <span class="string">" "</span> .. matches[<span class="number">2</span>])
+<span class="keyword">end</span>)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.alias.exact"></a>
+    <strong>runes.alias.exact (text, callback)</strong>
+    </dt>
+    <dd>
+    Creates an alias that matches text exactly.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">text</span>
+         string The text to match exactly (will be escaped for regex)
+        </li>
+        <li><span class="parameter">callback</span>
+         function|string Function or string to execute when matched
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.alias.<span class="function-name">exact</span>(<span class="string">"hp"</span>, <span class="string">"look at health"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.alias.any"></a>
+    <strong>runes.alias.any (texts, callback)</strong>
+    </dt>
+    <dd>
+    Creates an alias that matches any of the provided texts exactly.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">texts</span>
+         table Array of text strings to match (each will be escaped)
+        </li>
+        <li><span class="parameter">callback</span>
+         function|string Function or string to execute when matched
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.alias.<span class="function-name">any</span>({<span class="string">"hp"</span>, <span class="string">"health"</span>, <span class="string">"hitpoints"</span>}, <span class="string">"look at health"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.alias.starts"></a>
+    <strong>runes.alias.starts (prefix, callback)</strong>
+    </dt>
+    <dd>
+    Creates an alias that matches text starting with the given prefix.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">prefix</span>
+         string The prefix to match at the start (will be escaped)
+        </li>
+        <li><span class="parameter">callback</span>
+         function|string Function or string to execute when matched
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.alias.<span class="function-name">starts</span>(<span class="string">"cast "</span>, <span class="keyword">function</span>(matches, input)
+    runes.<span class="function-name">send</span>(<span class="string">"cast_spell "</span> .. matches[<span class="number">1</span>])
+<span class="keyword">end</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.alias.resolve"></a>
+    <strong>runes.alias.resolve (input)</strong>
+    </dt>
+    <dd>
+    Attempts to match input against registered aliases.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">input</span>
+         string The input string to check against aliases
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        function|nil Returns a wrapper function if matched, nil otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> handler = runes.alias.<span class="function-name">resolve</span>(<span class="string">"hp"</span>)
+ <span class="keyword">if</span> handler <span class="keyword">then</span> <span class="function-name">handler</span>() <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.alias.remove"></a>
+    <strong>runes.alias.remove (pattern)</strong>
+    </dt>
+    <dd>
+    Removes an alias by its pattern.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">pattern</span>
+         string The exact pattern string that was used to create the alias
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.alias.<span class="function-name">remove</span>(<span class="string">"^hp$"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.alias.list"></a>
+    <strong>runes.alias.list ()</strong>
+    </dt>
+    <dd>
+    Returns a list of all defined aliases.
+
+    </ul>
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        table A list of alias patterns
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> all_aliases = runes.alias.<span class="function-name">list</span>()
+<span class="keyword">for</span> _, pattern <span class="keyword">in</span> <span class="global">ipairs</span>(all_aliases) <span class="keyword">do</span>
+    runes.<span class="function-name">output</span>(<span class="string">"Alias pattern: "</span> .. pattern)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/LDoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2025-03-02 13:44:12 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

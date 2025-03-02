@@ -24,6 +24,7 @@ const (
 	EventRedraw       EventType = "redraw"       // Request UI redraw
 	EventResize       EventType = "resize"       // Terminal resize
 	EventScroll       EventType = "scroll"       // Scroll viewport
+	EventOutput       EventType = "output"       // Output text to display
     
 	// Debug/Logging
 	EventLog         EventType = "log"          // Log message

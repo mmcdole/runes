@@ -35,7 +35,8 @@ func RegisterLine(L *lua.LState) {
     L.SetField(mt, "__index", instanceMt)
 }
 
-// Constructor
+// luaLineNew creates a new Line object
+// Lua syntax: line.new(text) -> line
 func luaLineNew(L *lua.LState) int {
     text := L.CheckString(1)
     line := &LuaLine{line: types.NewLine(text)}
@@ -56,21 +57,25 @@ func checkLine(L *lua.LState) *LuaLine {
     return nil
 }
 
-// Raw text getter
+// luaLineRaw gets the raw text of a line
+// Lua syntax: line:raw() -> string
 func luaLineRaw(L *lua.LState) int {
     line := checkLine(L)
     L.Push(lua.LString(line.line.Raw))
     return 1
 }
 
-// Display text getter
+// luaLineDisplay gets the display text of a line
+// Lua syntax: line:display() -> string
 func luaLineDisplay(L *lua.LState) int {
     line := checkLine(L)
     L.Push(lua.LString(line.line.Display))
     return 1
 }
 
-// Gag flag getter/setter
+// luaLineGag gets or sets the gag flag of a line
+// Lua syntax: line:gag() -> boolean
+// Lua syntax: line:gag(boolean) -> boolean
 func luaLineGag(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
@@ -80,7 +85,9 @@ func luaLineGag(L *lua.LState) int {
     return 1
 }
 
-// Prompt flag getter/setter
+// luaLinePrompt gets or sets the prompt flag of a line
+// Lua syntax: line:prompt() -> boolean
+// Lua syntax: line:prompt(boolean) -> boolean
 func luaLinePrompt(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
@@ -90,7 +97,9 @@ func luaLinePrompt(L *lua.LState) int {
     return 1
 }
 
-// Complete flag getter/setter
+// luaLineComplete gets or sets the complete flag of a line
+// Lua syntax: line:complete() -> boolean
+// Lua syntax: line:complete(boolean) -> boolean
 func luaLineComplete(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
@@ -100,7 +109,9 @@ func luaLineComplete(L *lua.LState) int {
     return 1
 }
 
-// Matched flag getter/setter
+// luaLineMatched gets or sets the matched flag of a line
+// Lua syntax: line:matched() -> boolean
+// Lua syntax: line:matched(boolean) -> boolean
 func luaLineMatched(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {
@@ -110,7 +121,9 @@ func luaLineMatched(L *lua.LState) int {
     return 1
 }
 
-// SkipLog flag getter/setter
+// luaLineSkipLog gets or sets the skiplog flag of a line
+// Lua syntax: line:skiplog() -> boolean
+// Lua syntax: line:skiplog(boolean) -> boolean
 func luaLineSkipLog(L *lua.LState) int {
     line := checkLine(L)
     if L.GetTop() > 1 {

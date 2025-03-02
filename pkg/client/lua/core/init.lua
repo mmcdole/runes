@@ -2,10 +2,7 @@
 
 -- Handle output
 runes.add_output_listener(function(line)
-    -- Default output handler - just return line if not gagged
-    if line:gag() then
-        return nil  -- Don't display gagged lines
-    end
+    -- Default input handler - just return line
     return line
 end)
 

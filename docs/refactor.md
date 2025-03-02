@@ -1,269 +1,68 @@
-# Output Processing Refactor
+# Line Type Refactor
 
-## Package Design
+## Overview
+Consolidating multiple Line types into a single `client.Line` type with consistent raw/display fields and standardizing its usage across the codebase.
 
-### Revised Package Structure
-```
-pkg/
-├── protocol/           # Only truly protocol-level code
-│   └── telnet/        # Generic telnet implementation
-│
-└── client/            # Everything MUD-client specific
-    ├── ansi/          # ANSI processing
-    ├── buffer/        # Output buffer
-    ├── connection/    # Connection handling
-    ├── events/        # Event system
-    ├── history/       # Command history
-    ├── lua/           # Lua scripting
-    ├── terminal/      # Terminal handling
-    └── ui/            # User interface
-```
+## Core Changes Made
+1. Created unified `client.Line` type with:
+   - `Raw` - Original bytes from network
+   - `Display` - ANSI processed for terminal display
+   - Various flags (IsPrompt, Gag, etc.)
 
-### Design Rationale
-1. Most functionality is MUD-client specific
-2. Only telnet protocol handling is truly generic
-3. Better to acknowledge coupling than force false separation
-4. Follows Go's standard library patterns (e.g., net/http/httputil)
+2. Updated Lua bindings to expose:
+   - `line:raw()` - Get original network bytes
+   - `line:display()` - Get display-ready ANSI text
+   - Flag methods (gag, prompt, etc.)
 
-## Package Name Updates
+## Required Changes
 
-### Required Changes
-All package declarations and imports need to be updated to reflect the new structure:
+### 1. Buffer Package
+- [ ] Update Buffer to use client.Line for storage
+- [ ] Use ANSI processor to convert Raw to Display:
+  ```go
+  func (b *Buffer) Write(line *client.Line) {
+      // Process ANSI on write
+      line.Display = b.processor.Process(line.Raw)
+      // Store line...
+  }
+  ```
 
-1. **Protocol Package**
-```go
-// Before
-package telnet
-import "github.com/mmcdole/runes/pkg/protocol/telnet"
+### 2. Viewport Package
+- [ ] Update Viewport to render line.Display field, when it fetches lines from buffer
 
-// After - no change needed
-package telnet
-import "github.com/mmcdole/runes/pkg/protocol/telnet"
-```
 
-2. **Client Packages**
-```go
-// Before
-package ansi
-import "github.com/mmcdole/runes/pkg/ansi"
+### 3. Event System
+- [ ] Update event types to use client.Line:
+  ```go
+  const (
+      EventRawInput  = "raw_input"   // string
+      EventRawOutput = "raw_output"  // *client.Line
+      EventPrompt    = "prompt"      // *client.Line
+      // ...
+  )
+  ```
+- [ ] Update event handlers to properly create/handle client.Line objects
 
-// After
-package ansi
-import "github.com/mmcdole/runes/pkg/client/ansi"
-```
+### 4. Data Flow
+The complete flow should be:
+1. Network receives bytes
+2. Connection creates client.Line with Raw set
+3. Events emit client.Line to LuaEngine
+4. LuaEngine wraps as LuaLine for Lua scripts
+5. Lua scripts process line (can modify flags, etc)
+6. Lua bindings convert back to client.Line
+7. client.Line flows to Buffer
+8. Buffer processes Raw → Display using ANSI processor
+9. Viewport fetches and renders line.Display from Buffer
 
-### Full Package Update List
-1. `pkg/ansi` → `pkg/client/ansi`
-   - Update in all files using ANSI processing
-   - Check for any external tools/scripts importing this package
+Key points:
+- Lua gets first chance to process raw lines
+- Buffer handles ANSI processing after Lua
+- Viewport only renders final Display content
 
-2. `pkg/events` → `pkg/client/events`
-   - Update all event emitters and handlers
-   - Check Lua bindings that might reference events
-
-3. `pkg/luaengine` → `pkg/client/lua`
-   - Update package name and directory
-   - Update all imports in Lua-related code
-   - Check any script files that might have hardcoded paths
-
-4. `pkg/buffer` → `pkg/client/buffer`
-   - Update buffer package references
-   - Check viewport and UI components that use buffer
-
-### Files to Check
-- All .go files for import statements
-- go.mod and go.sum
-- Any build scripts or tools
-- Documentation references
-- Test files
-- Example code
-- Integration tests
-
-### Verification Steps
-1. Run `go mod tidy` after moves
-2. Check for broken imports: `go build ./...`
-3. Run all tests: `go test ./...`
-4. Verify external tools still work
-5. Check documentation is up to date
-
-### Common Places for Package References
-1. Import statements
-2. Type assertions
-3. Documentation comments
-4. Test files
-5. Example code
-6. Build tags
-7. Interface definitions
-8. Mock implementations
-
-### Tools to Help
-```bash
-# Find all Go files
-find . -name "*.go" -type f
-
-# Search for old import paths
-grep -r "github.com/mmcdole/runes/pkg/" .
-
-# Check for package declarations
-grep -r "^package " .
-```
-
-Remember to:
-1. Update one package at a time
-2. Run tests after each package move
-3. Commit changes in logical groups
-4. Update documentation as you go
-5. Verify external tools still work
-
-## Connection Output Processing
-
-### pkg/client/connection/output.go
-
-```go
-type Mode int
-
-const (
-    ModeNormal Mode = iota
-    ModePrompt
-)
-
-type OutputProcessor struct {
-    conn     *protocol.TelnetConnection
-    buffer   []byte
-    mode     Mode
-    events   *events.EventProcessor
-    maxPromptSize int  // Size threshold for prompt detection (default 500)
-}
-
-type Line struct {
-    Content   string
-    Timestamp time.Time
-    IsPrompt  bool
-}
-```
-
-### Line Processing Behavior
-
-1. **Buffer Management**
-```go
-func (p *OutputProcessor) Write(data []byte) {
-    p.buffer = append(p.buffer, data...)
-    p.processBuffer()
-}
-```
-
-2. **Line Detection**
-```go
-func (p *OutputProcessor) processBuffer() {
-    // Look for line endings (\n, \r\n, \n\r)
-    // Keep partial lines in buffer
-    // Handle prompts for small buffers
-}
-```
-
-3. **Prompt Detection** (based on Blightmud's approach)
-```go
-func (p *OutputProcessor) checkPrompt() bool {
-    // If buffer is small (< maxPromptSize)
-    // And contains no newline
-    // Consider it a potential prompt
-    if len(p.buffer) < p.maxPromptSize && !bytes.Contains(p.buffer, []byte{'\n'}) {
-        p.emitLine(true)  // Emit as prompt
-        return true
-    }
-    return false
-}
-```
-
-4. **Line Emission**
-```go
-func (p *OutputProcessor) emitLine(isPrompt bool) {
-    line := &Line{
-        Content:   string(p.buffer),
-        Timestamp: time.Now(),
-        IsPrompt:  isPrompt,
-    }
-    
-    // For prompts, don't clear buffer in case more data comes
-    if !isPrompt {
-        p.buffer = p.buffer[:0]
-    }
-    
-    p.events.Emit(events.RawLineEvent{Line: line})
-}
-```
-
-### Integration with Client
-
-1. **Client Setup**
-```go
-type Client struct {
-    outputProc *connection.OutputProcessor
-    // ... other fields
-}
-
-func NewClient() *Client {
-    c := &Client{
-        outputProc: connection.NewOutputProcessor(
-            telnetConn,
-            events,
-            connection.WithMaxPromptSize(500),
-        ),
-    }
-    // ... other setup
-}
-```
-
-2. **Event Flow**
-```
-OutputProcessor -> RawLineEvent -> Lua Processing -> ANSI Processing -> Display
-```
-
-### Key Features
-
-1. **Prompt Handling**
-- Small buffers (< 500 bytes) without newlines treated as prompts
-- Prompts emitted but kept in buffer
-- Handles cases like "Password:" properly
-
-2. **Line Buffering**
-- Accumulates partial lines until complete
-- Only emits on newline or prompt condition
-- Maintains buffer across reads
-
-3. **Event Integration**
-- Emits RawLineEvent for complete lines
-- Includes prompt flag in events
-- Preserves timing information
-
-4. **Configuration**
-- Configurable prompt size threshold
-- Adjustable buffer sizes
-- Debug logging options
-
-## Implementation Steps
-
-1. Create OutputProcessor
-   - Basic buffer management
-   - Line detection
-   - Event emission
-
-2. Add Prompt Detection
-   - Size threshold checking
-   - Newline scanning
-   - Prompt event handling
-
-3. Integrate with Client
-   - Remove old buffering code
-   - Wire up event handling
-   - Update ANSI processing
-
-4. Add Testing
-   - Test partial line handling
-   - Test prompt detection
-   - Test various line endings
-
-5. Add Monitoring/Debug
-   - Buffer size tracking
-   - Prompt detection logging
-   - Performance metrics
+## Migration Steps
+1. Update Buffer package first (central point)
+2. Update Event system to use new types
+3. Update Viewport to use Display field
+4. Update all tests
+6. Update any lua files or bindings

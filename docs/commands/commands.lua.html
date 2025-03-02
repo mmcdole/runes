@@ -1,0 +1,430 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Runes MUD Client API Documentation</title>
+    <link rel="stylesheet" href="../ldoc_pale.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>Runes MUD Client</h1>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+
+
+<h2>Commands</h2>
+<ul class="nowrap">
+  <li><strong>commands</strong></li>
+</ul>
+<h2>API Reference</h2>
+<ul class="nowrap">
+  <li><a href="../api reference/runes.html">runes</a></li>
+  <li><a href="../api reference/trigger.html">trigger</a></li>
+  <li><a href="../api reference/alias.html">alias</a></li>
+  <li><a href="../api reference/events.html">events</a></li>
+  <li><a href="../api reference/timer.html">timer</a></li>
+  <li><a href="../api reference/input.html">input</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/api_usage.lua.html">api_usage.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+    --- Client Commands
+-- @topic Commands
+-- This page documents all the commands available in the Runes MUD client.
+-- All commands start with a forward slash (/).
+-- Type /help in the client to see a list of available commands.</p>
+
+<p>-- core/commands.lua</p>
+
+<p>--- Connect to a MUD server
+-- @command /connect &lt;host&gt; &lt;port&gt;
+-- @usage /connect example.com 4000
+-- @usage /connect localhost 4000
+-- @description Connect to a MUD server
+-- @param host The hostname or IP address of the MUD server
+-- @param port The port number of the MUD server</p>
+
+<p>--- Disconnect from the current server
+-- @command /disconnect
+-- @usage /disconnect
+-- @description Disconnect from the current server</p>
+
+<p>--- Quit the client
+-- @command /quit
+-- @usage /quit
+-- @description Quit the client</p>
+
+<p>--- Buffer management commands
+-- @command /buffer &lt;list|switch &lt;name&gt;&gt;
+-- @usage /buffer list
+-- @usage /buffer switch system
+-- @description Buffer management commands
+-- @param action Either "list" to show all buffers or "switch" to change to a different buffer
+-- @param name The name of the buffer to switch to (only needed with "switch")</p>
+
+<p>--- Show help for all commands or a specific command
+-- @command /help [command]
+-- @usage /help
+-- @usage /help connect
+-- @description Show help for all commands or a specific command
+-- @param command Optional command name to get help for</p>
+
+<p>--- Load a script file
+-- @command /load &lt;path&gt;
+-- @usage /load myscript.lua
+-- @usage /load /absolute/path/script.lua
+-- @description Load a script file
+-- @param path Path to the Lua script file to load</p>
+
+<p>--- List all defined aliases
+-- @command /aliases
+-- @usage /aliases
+-- @description List all defined aliases</p>
+
+<p>--- List all defined triggers
+-- @command /triggers
+-- @usage /triggers
+-- @description List all defined triggers</p>
+
+<p>-- Command syntax definitions
+local commands = {</p>
+
+<pre>
+connect = {
+    syntax = <span class="string">"/connect &lt;host&gt; &lt;port&gt;"</span>,
+    description = <span class="string">"Connect to a MUD server"</span>,
+    help = <span class="string">"Examples:\n  /connect example.com 4000\n  /connect localhost 4000"</span>
+},
+disconnect = {
+    syntax = <span class="string">"/disconnect"</span>,
+    description = <span class="string">"Disconnect from the current server"</span>
+},
+quit = {
+    syntax = <span class="string">"/quit"</span>,
+    description = <span class="string">"Quit the client"</span>
+},
+buffer = {
+    syntax = <span class="string">"/buffer &lt;list|switch &lt;n&gt;&gt;"</span>,
+    description = <span class="string">"Buffer management commands"</span>,
+    help = <span class="string">"Examples:\n  /buffer list\n  /buffer switch system"</span>
+},
+help = {
+    syntax = <span class="string">"/help [command]"</span>,
+    description = <span class="string">"Show help for all commands or a specific command"</span>
+},
+<span class="global">load</span> = {
+    syntax = <span class="string">"/load &lt;path&gt;"</span>,
+    description = <span class="string">"Load a script file"</span>,
+    help = <span class="string">"Examples:\n  /load myscript.lua\n  /load /absolute/path/script.lua"</span>
+},
+aliases = {
+    syntax = <span class="string">"/aliases"</span>,
+    description = <span class="string">"List all defined aliases"</span>
+},
+triggers = {
+    syntax = <span class="string">"/triggers"</span>,
+    description = <span class="string">"List all defined triggers"</span>
+}
+</pre>
+
+<p>}</p>
+
+<p>--- Connect to a MUD server.
+-- @function connect
+-- @param host The hostname or IP address of the MUD server
+-- @param port The port number of the MUD server
+-- @usage /connect example.com 4000
+-- @usage /connect localhost 4000
+local function cmd_connect() end</p>
+
+<p>--- Disconnect from the current server.
+-- @function disconnect
+-- @usage /disconnect
+local function cmd_disconnect() end</p>
+
+<p>--- Quit the client.
+-- @function quit
+-- @usage /quit
+local function cmd_quit() end</p>
+
+<p>--- Buffer management commands.
+-- @function buffer
+-- @param action Either "list" to show all buffers or "switch" to change to a different buffer
+-- @param name The name of the buffer to switch to (only needed with "switch")
+-- @usage /buffer list
+-- @usage /buffer switch system
+local function cmd_buffer() end</p>
+
+<p>--- Show help for all commands or a specific command.
+-- @function help
+-- @param command Optional command name to get help for
+-- @usage /help
+-- @usage /help connect
+local function cmd_help() end</p>
+
+<p>--- Load a script file.
+-- @function load
+-- @param path Path to the Lua script file to load
+-- @usage /load myscript.lua
+-- @usage /load /absolute/path/script.lua
+local function cmd_load() end</p>
+
+<p>--- List all defined aliases.
+-- @function aliases
+-- @usage /aliases
+local function cmd_aliases() end</p>
+
+<p>--- List all defined triggers.
+-- @function triggers
+-- @usage /triggers
+local function cmd_triggers() end</p>
+
+<p>-- Helper function to show command help
+local function show<em>command</em>help(cmd_name)</p>
+
+<pre>
+<span class="keyword">local</span> cmd = commands[cmd_name]
+<span class="keyword">if</span> <span class="keyword">not</span> cmd <span class="keyword">then</span> <span class="keyword">return</span> <span class="keyword">end</span>
+
+runes.<span class="function-name">output</span>(C_GREEN .. <span class="global">string</span>.<span class="function-name">format</span>([[
+</pre>
+
+<p>Command: %s
+Syntax: %s
+%s
+%s]], </p>
+
+<pre>
+cmd_name,
+cmd.syntax,
+cmd.description,
+cmd.help <span class="keyword">or</span> <span class="string">""</span>
+ C_RESET .. <span class="string">"\n"</span>)
+</pre>
+
+<p>end</p>
+
+<p>-- Helper function for state labels (enabled/disabled)
+local function state_label(state, label)</p>
+
+<pre>
+<span class="keyword">local</span> len = label:<span class="function-name">len</span>() + <span class="number">1</span>
+<span class="keyword">if</span> <span class="keyword">not</span> state <span class="keyword">then</span>
+    label = <span class="string">"-"</span> .. label
+    <span class="keyword">return</span> C_RED .. <span class="global">string</span>.<span class="function-name">format</span>(<span class="string">"%"</span> .. len .. <span class="string">"s"</span>, label) .. C_RESET
+<span class="keyword">else</span>
+    label = <span class="string">"+"</span> .. label
+    <span class="keyword">return</span> C_GREEN .. <span class="global">string</span>.<span class="function-name">format</span>(<span class="string">"%"</span> .. len .. <span class="string">"s"</span>, label) .. C_RESET
+<span class="keyword">end</span>
+</pre>
+
+<p>end</p>
+
+<p>-- Helper function to show just the syntax
+local function show<em>syntax(cmd</em>name)</p>
+
+<pre>
+<span class="keyword">local</span> cmd = commands[cmd_name]
+<span class="keyword">if</span> <span class="keyword">not</span> cmd <span class="keyword">then</span> <span class="keyword">return</span> <span class="keyword">end</span>
+runes.<span class="function-name">output</span>(C_GREEN .. <span class="string">"Syntax: "</span> .. cmd.syntax .. C_RESET .. <span class="string">"\n"</span>)
+</pre>
+
+<p>end</p>
+
+<p>-- Connection management
+alias.add("^/connect%s<em>(.</em>)$", function(matches, line)</p>
+
+<pre>
+<span class="keyword">local</span> args = matches[<span class="number">1</span>]
+<span class="keyword">local</span> host, port = <span class="global">string</span>.<span class="function-name">match</span>(args, <span class="string">"^(%S+)%s+(%d+)$"</span>)
+
+<span class="keyword">if</span> <span class="keyword">not</span> host <span class="keyword">or</span> <span class="keyword">not</span> port <span class="keyword">then</span>
+    <span class="function-name">show_syntax</span>(<span class="string">"connect"</span>)
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+port = <span class="global">tonumber</span>(port)
+<span class="keyword">if</span> port &lt; <span class="number">1</span> <span class="keyword">or</span> port &gt; <span class="number">65535</span> <span class="keyword">then</span>
+    runes.<span class="function-name">output</span>(C_RED .. <span class="string">"Error: Port must be between 1 and 65535"</span> .. C_RESET .. <span class="string">"\n"</span>)
+    <span class="function-name">show_syntax</span>(<span class="string">"connect"</span>)
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+runes.<span class="function-name">connect</span>(host, port)
+</pre>
+
+<p>end)</p>
+
+<p>alias.add("^/disconnect$", function(matches, line)</p>
+
+<pre>
+runes.<span class="function-name">disconnect</span>()
+</pre>
+
+<p>end)</p>
+
+<p>-- Buffer management
+alias.add("^/buffer%s<em>(.</em>)$", function(matches, line)</p>
+
+<pre>
+<span class="keyword">local</span> args = matches[<span class="number">1</span>]
+
+<span class="keyword">if</span> args == <span class="string">"list"</span> <span class="keyword">then</span>
+    <span class="keyword">local</span> buffers = mud.<span class="function-name">list_buffers</span>()
+    runes.<span class="function-name">output</span>(C_GREEN .. <span class="string">"=== Buffers ==="</span> .. C_RESET .. <span class="string">"\n"</span>)
+    <span class="keyword">for</span> _, buf <span class="keyword">in</span> <span class="global">ipairs</span>(buffers) <span class="keyword">do</span>
+        runes.<span class="function-name">output</span>(C_GREEN .. <span class="string">"- "</span> .. buf .. C_RESET .. <span class="string">"\n"</span>)
+    <span class="keyword">end</span>
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+<span class="keyword">local</span> cmd, name = <span class="global">string</span>.<span class="function-name">match</span>(args, <span class="string">"^(%S+)%s+(%S+)$"</span>)
+<span class="keyword">if</span> cmd == <span class="string">"switch"</span> <span class="keyword">and</span> name <span class="keyword">then</span>
+    mud.<span class="function-name">switch_buffer</span>(name)
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+<span class="function-name">show_syntax</span>(<span class="string">"buffer"</span>)
+</pre>
+
+<p>end)</p>
+
+<p>-- Help command
+alias.add("^/help%s<em>(.</em>)$", function(matches, line)</p>
+
+<pre>
+<span class="keyword">local</span> cmd_name = matches[<span class="number">1</span>]
+<span class="keyword">if</span> cmd_name ~= <span class="string">""</span> <span class="keyword">then</span>
+    <span class="keyword">if</span> commands[cmd_name] <span class="keyword">then</span>
+        <span class="function-name">show_command_help</span>(cmd_name)
+    <span class="keyword">else</span>
+        runes.<span class="function-name">output</span>(C_GREEN .. <span class="string">"Unknown command: "</span> .. cmd_name .. C_RESET .. <span class="string">"\n"</span>)
+    <span class="keyword">end</span>
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+runes.<span class="function-name">output</span>(C_GREEN .. [[
+</pre>
+
+<p>Available commands:
+  /help [command] - Show help for all commands or a specific command
+  /connect        - Connect to a MUD server: /connect <host> <port>
+  /disconnect     - Disconnect from server
+  /buffer list    - List all buffers
+  /buffer switch  - Switch to a different buffer
+  /load           - Load a script file: /load <path>
+  /aliases        - List all defined aliases
+  /triggers       - List all defined triggers
+  /quit           - Quit the client</p>
+
+<p>Type /help <command> for detailed help on a specific command.
+]] .. C_RESET .. "\n")
+end)</p>
+
+<p>-- Load command
+alias.add("^/load%s<em>(.</em>)$", function(matches, line)</p>
+
+<pre>
+<span class="keyword">local</span> path = matches[<span class="number">1</span>]
+<span class="keyword">if</span> <span class="keyword">not</span> path <span class="keyword">then</span>
+    <span class="function-name">show_syntax</span>(<span class="string">"load"</span>)
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+<span class="comment">-- Load the script using Go binding
+</span><span class="keyword">local</span> ok, err = runes.<span class="function-name">load_script</span>(path)
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+    runes.<span class="function-name">output</span>(C_RED .. <span class="string">"Error: "</span> .. err .. C_RESET .. <span class="string">"\n"</span>)
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+runes.<span class="function-name">output</span>(C_GREEN .. <span class="string">"Successfully loaded script: "</span> .. path .. C_RESET .. <span class="string">"\n"</span>)
+</pre>
+
+<p>end)</p>
+
+<p>-- List aliases command
+alias.add("^/aliases$", function(matches, line)</p>
+
+<pre>
+runes.<span class="function-name">output</span>(C_GREEN .. <span class="string">"=== Aliases ==="</span> .. C_RESET .. <span class="string">"\n"</span>)
+<span class="keyword">local</span> alist = alias.<span class="function-name">list</span>()
+<span class="global">table</span>.<span class="function-name">sort</span>(alist)  <span class="comment">-- Sort alphabetically
+</span><span class="keyword">for</span> _, pattern <span class="keyword">in</span> <span class="global">ipairs</span>(alist) <span class="keyword">do</span>
+    runes.<span class="function-name">output</span>(<span class="global">string</span>.<span class="function-name">format</span>(<span class="string">"%s%s%s %s\n"</span>,
+        C_YELLOW,
+        pattern,
+        C_RESET,
+        <span class="function-name">state_label</span>(<span class="keyword">true</span>, <span class="string">"enabled"</span>)
+    ))
+<span class="keyword">end</span>
+</pre>
+
+<p>end)</p>
+
+<p>-- List triggers command
+alias.add("^/triggers$", function(matches, line)</p>
+
+<pre>
+runes.<span class="function-name">output</span>(C_GREEN .. <span class="string">"=== Triggers ==="</span> .. C_RESET .. <span class="string">"\n"</span>)
+<span class="keyword">local</span> tlist = trigger.<span class="function-name">list</span>()
+<span class="comment">-- Sort by name
+</span><span class="global">table</span>.<span class="function-name">sort</span>(tlist, <span class="keyword">function</span>(a, b) <span class="keyword">return</span> a.name &lt; b.name <span class="keyword">end</span>)
+<span class="keyword">for</span> _, t <span class="keyword">in</span> <span class="global">ipairs</span>(tlist) <span class="keyword">do</span>
+    runes.<span class="function-name">output</span>(<span class="global">string</span>.<span class="function-name">format</span>(<span class="string">"%-20s : %s%s%s %s\n"</span>,
+        t.name,
+        C_YELLOW,
+        t.pattern,
+        C_RESET,
+        <span class="function-name">state_label</span>(t.enabled, <span class="string">"enabled"</span>)
+    ))
+<span class="keyword">end</span>
+</pre>
+
+<p>end)</p>
+
+<p>-- Quit command
+alias.add("^/quit$", function(matches, line)</p>
+
+<pre>
+runes.<span class="function-name">quit</span>()
+</pre>
+
+<p>end)
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/LDoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2025-03-02 13:47:39 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

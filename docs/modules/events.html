@@ -1,0 +1,252 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Runes MUD Client API Documentation</title>
+    <link rel="stylesheet" href="../ldoc_pale.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>Runes MUD Client</h1>
+
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/runes.html">runes</a></li>
+  <li><a href="../modules/trigger.html">trigger</a></li>
+  <li><a href="../modules/alias.html">alias</a></li>
+  <li><strong>events</strong></li>
+  <li><a href="../modules/timer.html">timer</a></li>
+  <li><a href="../modules/input.html">input</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/api_usage.lua.html">api_usage.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>events</code></h1>
+<p>Events System
+ This module provides an event system for registering and handling events
+ throughout the Runes MUD client.</p>
+<p>
+
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#runes.events.add">runes.events.add (eventName, handler)</a></td>
+	<td class="summary">Registers a handler function for a specific event.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.events.emit">runes.events.emit (eventName, eventData)</a></td>
+	<td class="summary">Emits an event, triggering all registered handlers.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.events.clear">runes.events.clear (eventName)</a></td>
+	<td class="summary">Removes all handlers for a specific event.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.events.remove">runes.events.remove (eventName, handler)</a></td>
+	<td class="summary">Removes a specific handler function from an event.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#runes.events.list">runes.events.list ()</a></td>
+	<td class="summary">Lists all events that have registered handlers.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "runes.events.add"></a>
+    <strong>runes.events.add (eventName, handler)</strong>
+    </dt>
+    <dd>
+    Registers a handler function for a specific event.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">eventName</span>
+         string The name of the event to listen for
+        </li>
+        <li><span class="parameter">handler</span>
+         function The function to call when the event occurs
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.events.<span class="function-name">add</span>(<span class="string">"connect"</span>, <span class="keyword">function</span>(data)
+    runes.<span class="function-name">output</span>(<span class="string">"Connected to server: "</span> .. data.host)
+<span class="keyword">end</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.events.emit"></a>
+    <strong>runes.events.emit (eventName, eventData)</strong>
+    </dt>
+    <dd>
+    Emits an event, triggering all registered handlers.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">eventName</span>
+         string The name of the event to emit
+        </li>
+        <li><span class="parameter">eventData</span>
+         any Data to pass to the event handlers
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.events.<span class="function-name">emit</span>(<span class="string">"custom_event"</span>, { value = <span class="number">123</span> })</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.events.clear"></a>
+    <strong>runes.events.clear (eventName)</strong>
+    </dt>
+    <dd>
+    Removes all handlers for a specific event.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">eventName</span>
+         string The name of the event to clear handlers for
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.events.<span class="function-name">clear</span>(<span class="string">"custom_event"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.events.remove"></a>
+    <strong>runes.events.remove (eventName, handler)</strong>
+    </dt>
+    <dd>
+    Removes a specific handler function from an event.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">eventName</span>
+         string The name of the event
+        </li>
+        <li><span class="parameter">handler</span>
+         function The handler function to remove
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        boolean True if the handler was found and removed, false otherwise
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">runes.events.<span class="function-name">remove</span>(<span class="string">"connect"</span>, myConnectHandler)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "runes.events.list"></a>
+    <strong>runes.events.list ()</strong>
+    </dt>
+    <dd>
+    Lists all events that have registered handlers.
+
+    </ul>
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        table A list of event names
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> events = runes.events.<span class="function-name">list</span>()
+<span class="keyword">for</span> _, name <span class="keyword">in</span> <span class="global">ipairs</span>(events) <span class="keyword">do</span>
+    runes.<span class="function-name">output</span>(<span class="string">"Event: "</span> .. name)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/lunarmodules/LDoc">LDoc 1.5.0</a></i>
+<i style="float:right;">Last updated 2025-03-02 13:44:12 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>
