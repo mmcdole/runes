@@ -57,25 +57,33 @@ func NewLuaEngine(eventSystem events.EventSystem, scriptDir string) (*LuaEngine,
 
 // ProcessInput processes an input line through all registered input processors
 func (e *LuaEngine) ProcessInput(line *types.Line) {
-	// Process the input but ignore the return value
-	_ = e.processLineWithProcessors(line, InputProcessorTable, false)
+	if line == nil {
+		return
+	}
 
+	// Process the input but ignore the return value
+	_ = e.applyProcessorsToLine(line, InputProcessorTable, false)
+	
 	// After processing, emit any output lines that were collected during processing
 	e.emitOutputLines()
 }
 
 // ProcessOutput processes an output line through all registered output processors
 func (e *LuaEngine) ProcessOutput(line *types.Line) *types.Line {
-	result := e.processLineWithProcessors(line, OutputProcessorTable, true)
+	if line == nil {
+		return nil
+	}
 
+	result := e.applyProcessorsToLine(line, OutputProcessorTable, true)
+	
 	// After processing, emit any output lines that were collected during processing
 	e.emitOutputLines()
-
+	
 	return result
 }
 
-// processLineWithProcessors processes a line using the specified processor table
-func (e *LuaEngine) processLineWithProcessors(line *types.Line, tableKey string, isOutput bool) *types.Line {
+// applyProcessorsToLine processes a line using the specified processor table
+func (e *LuaEngine) applyProcessorsToLine(line *types.Line, tableKey string, isOutput bool) *types.Line {
 	if line == nil {
 		return nil
 	}
@@ -201,37 +209,29 @@ func (e *LuaEngine) addOutputLine(line *types.Line) {
 	e.outputBuffer = append(e.outputBuffer, line)
 }
 
-// flushOutputLines retrieves and clears the output buffer
-func (e *LuaEngine) flushOutputLines() []*types.Line {
+// getOutputLines retrieves and clears the output buffer
+func (e *LuaEngine) getOutputLines() []*types.Line {
 	e.bufferMutex.Lock()
 	defer e.bufferMutex.Unlock()
-
+	
 	// Create a copy of the buffer
 	lines := make([]*types.Line, len(e.outputBuffer))
 	copy(lines, e.outputBuffer)
-
+	
 	// Clear the buffer
 	e.outputBuffer = e.outputBuffer[:0]
-
+	
 	return lines
 }
 
 // emitOutputLines emits all collected output lines as events
 func (e *LuaEngine) emitOutputLines() {
-	lines := e.flushOutputLines()
+	lines := e.getOutputLines()
 	for _, line := range lines {
 		e.eventSystem.Emit(events.Event{
-			Type: events.EventOutput, // We'll need to add this event type
+			Type: events.EventOutput,
 			Data: line,
 		})
-	}
-}
-
-// Close closes the Lua state
-func (e *LuaEngine) Close() {
-	if e.state != nil {
-		e.state.Close()
-		e.state = nil
 	}
 }
 
@@ -242,4 +242,12 @@ func (e *LuaEngine) Tick() {
 
 	// Emit any buffered output lines
 	e.emitOutputLines()
+}
+
+// Close closes the Lua state
+func (e *LuaEngine) Close() {
+	if e.state != nil {
+		e.state.Close()
+		e.state = nil
+	}
 }
