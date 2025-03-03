@@ -33,6 +33,13 @@
       "input": "look",
       "output": "HP: 45/100",
       "expected_commands": ["look", "hp=45"]
+    },
+    {
+      "name": "Trigger with Gag",
+      "setup_lua": "trigger.add('password', 'Password: (.*)', {gag = true}, function(matches) runes.send('password_detected=' .. matches[1]) end)",
+      "output": "Password: secret123",
+      "expected_commands": ["password_detected=secret123"],
+      "should_gag": true
     }
   ]
 }

@@ -1,268 +1,138 @@
 package lua
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/mmcdole/runes/pkg/client/events"
 	"github.com/mmcdole/runes/pkg/client/types"
 	"github.com/stretchr/testify/assert"
 )
 
-// TestCase represents a single test case for alias or trigger functionality
-type TestCase struct {
-	Name             string   `json:"name"`
-	SetupLua         any      `json:"setup_lua"` // Can be string or []string
-	Input            string   `json:"input,omitempty"`
-	Output           string   `json:"output,omitempty"`
-	ExpectedCommands []string `json:"expected_commands"`
-}
+// TestOutputBufferAndEmission tests the output buffer and event emission
+func TestOutputBufferAndEmission(t *testing.T) {
+	// Create a custom event system that tracks output events
+	eventSystem := NewTestEventSystem([]string{})
 
-// TestSuite represents a collection of test cases
-type TestSuite struct {
-	Tests []TestCase `json:"tests"`
-}
+	// Create a new LuaEngine
+	engine, err := NewLuaEngine(eventSystem, "")
+	assert.NoError(t, err)
+	defer engine.Close()
 
-// TestEventSystem implements the events.EventSystem interface for testing
-type TestEventSystem struct {
-	commands []string
-	mutex    sync.Mutex
-	wg       sync.WaitGroup
-	expected []string
-}
+	// Clear any initial output lines from engine initialization
+	_ = engine.getOutputLines()
 
-func NewTestEventSystem(expected []string) *TestEventSystem {
-	tes := &TestEventSystem{
-		commands: []string{},
-		expected: expected,
+	// Add an output line
+	outputLine := &types.Line{
+		Raw:     "Test output",
+		Content: "Test output",
 	}
+
+	// Test addOutputLine and emitOutputLines
+	engine.addOutputLine(outputLine)
+
+	// Get the lines without emitting
+	lines := engine.getOutputLines()
+	assert.Equal(t, 1, len(lines))
+	assert.Equal(t, "Test output", lines[0].Content)
+
+	// Verify buffer is cleared
+	lines = engine.getOutputLines()
+	assert.Equal(t, 0, len(lines))
+}
+
+// TestLineModificationInProcessors tests that processors can modify lines
+func TestLineModificationInProcessors(t *testing.T) {
+	// Create a test event system
+	eventSystem := NewTestEventSystem([]string{})
+
+	// Create a new LuaEngine
+	engine, err := NewLuaEngine(eventSystem, "")
+	assert.NoError(t, err)
+	defer engine.Close()
+
+	// Add a processor that modifies the line
+	modifyLua := `
+	runes._add_output_processor(function(line)
+		line:gag(true)
+		line:skiplog(true)
+		return line
+	end)
+	`
+
+	// Execute the Lua code
+	err = engine.state.DoString(modifyLua)
+	assert.NoError(t, err)
+
+	// Process a line
+	line := &types.Line{
+		Raw:     "Test output",
+		Content: "Test output",
+	}
+
+	// Process the line
+	result := engine.ProcessOutput(line)
+
+	// Verify the modifications
+	assert.True(t, result.Flags.Gag)
+	assert.True(t, result.Flags.SkipLog)
+}
+
+// TestMultipleProcessorChaining tests that multiple processors can be chained
+func TestMultipleProcessorChaining(t *testing.T) {
+	// Create a test event system
+	eventSystem := NewTestEventSystem([]string{"processor1", "processor2"})
+
+	// Create a new LuaEngine
+	engine, err := NewLuaEngine(eventSystem, "")
+	assert.NoError(t, err)
+	defer engine.Close()
+
+	// Add multiple processors
+	chainLua := `
+	runes._add_input_processor(function(line)
+		runes.send("processor1")
+		return line
+	end)
 	
-	// Initialize the wait group counter if we have expected commands
-	if len(expected) > 0 {
-		tes.wg.Add(1)
+	runes._add_input_processor(function(line)
+		runes.send("processor2")
+		return line
+	end)
+	`
+
+	// Execute the Lua code
+	err = engine.state.DoString(chainLua)
+	assert.NoError(t, err)
+
+	// Process a line
+	line := &types.Line{
+		Raw:     "test",
+		Content: "test",
 	}
-	
-	return tes
+
+	engine.ProcessInput(line)
+
+	// Verify both processors were called
+	commands, ok := eventSystem.WaitForCommands(1 * time.Second)
+	assert.True(t, ok)
+	assert.Contains(t, commands, "processor1")
+	assert.Contains(t, commands, "processor2")
 }
 
-func (t *TestEventSystem) Subscribe(eventType events.EventType, handler events.Handler) {
-	// Not needed for testing
-}
+// TestNilLineHandling tests that the engine properly handles nil lines
+func TestNilLineHandling(t *testing.T) {
+	// Create a test event system
+	eventSystem := NewTestEventSystem([]string{})
 
-func (t *TestEventSystem) Emit(event events.Event) {
-	if event.Type == events.EventCommand {
-		t.mutex.Lock()
-		defer t.mutex.Unlock()
+	// Create a new LuaEngine
+	engine, err := NewLuaEngine(eventSystem, "")
+	assert.NoError(t, err)
+	defer engine.Close()
 
-		if cmd, ok := event.Data.(string); ok {
-			fmt.Printf("DEBUG: Received command: %s\n", cmd)
-			t.commands = append(t.commands, cmd)
+	// These should not panic
+	engine.ProcessInput(nil)
+	result := engine.ProcessOutput(nil)
+	assert.Nil(t, result)
 
-			// Check if we've received all expected commands in the correct order
-			// Only call Done() once when we have exactly the right number of commands
-			if len(t.expected) > 0 && len(t.commands) == len(t.expected) && t.hasAllExpectedInOrder() {
-				fmt.Printf("DEBUG: All expected commands received, done waiting\n")
-				t.wg.Done()
-			}
-		}
-	}
-}
-
-func (t *TestEventSystem) hasAllExpectedInOrder() bool {
-	if len(t.expected) == 0 {
-		return true
-	}
-
-	if len(t.commands) < len(t.expected) {
-		fmt.Printf("DEBUG: Not enough commands yet: have %d, need %d\n", 
-			len(t.commands), len(t.expected))
-		return false
-	}
-
-	// For exact matching, we need the same number of commands
-	if len(t.commands) != len(t.expected) {
-		fmt.Printf("DEBUG: Command count mismatch: have %d, expected %d\n", 
-			len(t.commands), len(t.expected))
-		return false
-	}
-
-	// Check that all commands match exactly
-	for i, cmd := range t.expected {
-		if t.commands[i] != cmd {
-			fmt.Printf("DEBUG: Command mismatch at position %d: expected '%s', got '%s'\n", 
-				i, cmd, t.commands[i])
-			return false
-		}
-	}
-
-	fmt.Printf("DEBUG: All commands match in order\n")
-	return true
-}
-
-func (t *TestEventSystem) WaitForCommands(timeout time.Duration) ([]string, bool) {
-	if len(t.expected) > 0 {
-		// Don't add to the wait group here, it's already initialized in the constructor
-
-		// Start a goroutine to handle timeout
-		done := make(chan struct{})
-		go func() {
-			t.wg.Wait()
-			close(done)
-		}()
-
-		// Wait for either completion or timeout
-		select {
-		case <-done:
-			return t.commands, true
-		case <-time.After(timeout):
-			return t.commands, false
-		}
-	}
-
-	return t.commands, true
-}
-
-// loadTestSuite loads a test suite from a JSON file
-func loadTestSuite(path string) (*TestSuite, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var suite TestSuite
-	if err := json.Unmarshal(data, &suite); err != nil {
-		return nil, err
-	}
-
-	return &suite, nil
-}
-
-// executeSetupLua executes the setup Lua code for a test case
-func executeSetupLua(engine *LuaEngine, setupLua any) error {
-	switch v := setupLua.(type) {
-	case string:
-		return engine.state.DoString(v)
-	case []interface{}:
-		for _, script := range v {
-			if scriptStr, ok := script.(string); ok {
-				if err := engine.state.DoString(scriptStr); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// TestAliases tests alias functionality
-func TestAliases(t *testing.T) {
-	// Load the test suite
-	suite, err := loadTestSuite("testdata/alias_tests.json")
-	if err != nil {
-		t.Fatalf("Failed to load alias test suite: %v", err)
-	}
-
-	for _, test := range suite.Tests {
-		t.Run(test.Name, func(t *testing.T) {
-			// Setup a test event system with expected commands
-			eventSystem := NewTestEventSystem(test.ExpectedCommands)
-
-			// Create a new LuaEngine
-			engine, err := NewLuaEngine(eventSystem, "")
-			if err != nil {
-				t.Fatalf("Failed to create LuaEngine: %v", err)
-			}
-			defer engine.Close()
-
-			// Execute setup Lua code
-			if err := executeSetupLua(engine, test.SetupLua); err != nil {
-				t.Fatalf("Failed to execute setup Lua: %v", err)
-			}
-
-			// Process input
-			line := &types.Line{
-				Raw:     test.Input,
-				Content: test.Input,
-			}
-
-			// Reset the commands array before processing input
-			eventSystem.commands = []string{}
-
-			engine.ProcessInput(line)
-
-			// Wait for expected commands with timeout
-			commands, ok := eventSystem.WaitForCommands(1 * time.Second)
-			if !ok {
-				t.Fatalf("Timed out waiting for commands. Got: %v, Expected: %v", commands, test.ExpectedCommands)
-			}
-
-			// Verify commands match expected commands in order
-			assert.Equal(t, test.ExpectedCommands, commands[len(commands)-len(test.ExpectedCommands):], 
-				"Commands should match expected commands in order")
-		})
-	}
-}
-
-// TestTriggers tests trigger functionality
-func TestTriggers(t *testing.T) {
-	// Load the test suite
-	suite, err := loadTestSuite("testdata/trigger_tests.json")
-	if err != nil {
-		t.Fatalf("Failed to load trigger test suite: %v", err)
-	}
-
-	for _, test := range suite.Tests {
-		t.Run(test.Name, func(t *testing.T) {
-			// Setup a test event system with expected commands
-			eventSystem := NewTestEventSystem(test.ExpectedCommands)
-
-			// Create a new LuaEngine
-			engine, err := NewLuaEngine(eventSystem, "")
-			if err != nil {
-				t.Fatalf("Failed to create LuaEngine: %v", err)
-			}
-			defer engine.Close()
-
-			// Execute setup Lua code
-			if err := executeSetupLua(engine, test.SetupLua); err != nil {
-				t.Fatalf("Failed to execute setup Lua: %v", err)
-			}
-
-			// Process input if present
-			if test.Input != "" {
-				inputLine := &types.Line{
-					Raw:     test.Input,
-					Content: test.Input,
-				}
-
-				// Reset the commands array before processing input
-				eventSystem.commands = []string{}
-
-				engine.ProcessInput(inputLine)
-			}
-
-			// Process output
-			if test.Output != "" {
-				outputLine := &types.Line{
-					Raw:     test.Output,
-					Content: test.Output,
-				}
-				engine.ProcessOutput(outputLine)
-			}
-
-			// Wait for expected commands with timeout
-			commands, ok := eventSystem.WaitForCommands(1 * time.Second)
-			if !ok {
-				t.Fatalf("Timed out waiting for commands. Got: %v, Expected: %v", commands, test.ExpectedCommands)
-			}
-
-			// Verify commands match expected commands in order
-			assert.Equal(t, test.ExpectedCommands, commands[len(commands)-len(test.ExpectedCommands):], 
-				"Commands should match expected commands in order")
-		})
-	}
+	engine.directOutput(nil)
 }

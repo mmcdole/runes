@@ -56,8 +56,12 @@ func NewLuaEngine(eventSystem events.EventSystem, scriptDir string) (*LuaEngine,
 }
 
 // ProcessInput processes an input line through all registered input processors
-func (e *LuaEngine) ProcessInput(line *types.Line) *types.Line {
-	return e.processWithTable(line, InputProcessorTable, false)
+func (e *LuaEngine) ProcessInput(line *types.Line) {
+	// Process the input but ignore the return value
+	_ = e.processWithTable(line, InputProcessorTable, false)
+	
+	// After processing, emit any output lines that were collected during processing
+	e.emitOutputLines()
 }
 
 // ProcessOutput processes an output line through all registered output processors
@@ -241,4 +245,13 @@ func (e *LuaEngine) Close() {
 		e.state.Close()
 		e.state = nil
 	}
+}
+
+// Tick processes any timed events and emits any buffered output lines
+// This should be called regularly to ensure timely output even when there's no server activity
+func (e *LuaEngine) Tick() {
+	// TODO: Implement timer callbacks similar to Blightmud's timer system
+	
+	// Emit any buffered output lines
+	e.emitOutputLines()
 }
