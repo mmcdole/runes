@@ -24,22 +24,38 @@ func RegisterLine(L *lua.LState) {
     instanceMt := L.NewTable()
     L.SetFuncs(instanceMt, map[string]lua.LGFunction{
         "raw":      luaLineRaw,      // Get raw text
-        "line":     luaLineRaw,      // Alias for raw (Blightmud compat)
         "display":  luaLineDisplay,   // Get display text
         "gag":      luaLineGag,       // Get/set gag flag
         "prompt":   luaLinePrompt,    // Get/set prompt flag
         "complete": luaLineComplete,  // Get/set complete flag
         "matched":  luaLineMatched,   // Get/set matched flag
         "skiplog":  luaLineSkipLog,   // Get/set skiplog flag
+        "set_text": luaLineSetText,   // Set both raw and display text
+        "set_display": luaLineSetDisplay, // Set only display text
     })
     L.SetField(mt, "__index", instanceMt)
 }
 
 // luaLineNew creates a new Line object
-// Lua syntax: line.new(text) -> line
+// Lua syntax: line.new(raw) -> line
+// Lua syntax: line.new(raw, display) -> line
 func luaLineNew(L *lua.LState) int {
-    text := L.CheckString(1)
-    line := &LuaLine{line: types.NewLine(text)}
+    var line *LuaLine
+    
+    if L.GetTop() == 1 {
+        // Single argument: use raw text and set display automatically
+        raw := L.CheckString(1)
+        line = &LuaLine{line: types.NewLine(raw)}
+    } else if L.GetTop() >= 2 {
+        // Two arguments: separate raw and display text
+        raw := L.CheckString(1)
+        display := L.CheckString(2)
+        line = &LuaLine{line: types.NewLineWithDisplay(raw, display)}
+    } else {
+        L.ArgError(1, "expected at least one argument")
+        return 0
+    }
+    
     ud := L.NewUserData()
     ud.Value = line
     L.SetMetatable(ud, L.GetTypeMetatable("line"))
@@ -131,4 +147,22 @@ func luaLineSkipLog(L *lua.LState) int {
     }
     L.Push(lua.LBool(line.line.Flags.SkipLog))
     return 1
+}
+
+// luaLineSetText sets the raw text and updates display to match
+// Lua syntax: line:set_text(raw) -> nil
+func luaLineSetText(L *lua.LState) int {
+    line := checkLine(L)
+    raw := L.CheckString(2)
+    line.line.SetText(raw)
+    return 0
+}
+
+// luaLineSetDisplay sets only the display text
+// Lua syntax: line:set_display(text) -> nil
+func luaLineSetDisplay(L *lua.LState) int {
+    line := checkLine(L)
+    text := L.CheckString(2)
+    line.line.SetDisplayText(text)
+    return 0
 }

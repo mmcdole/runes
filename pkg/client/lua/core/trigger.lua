@@ -160,7 +160,7 @@ local function check_trigger(t, line)
     end
     
     -- Get the appropriate content based on raw flag
-    local content = t.raw and line:raw() or line:line()
+    local content = t.raw and line:raw() or line:display()
     
     -- Try to match the pattern
     local matches = {string.match(content, t.pattern)}

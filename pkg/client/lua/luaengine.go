@@ -21,20 +21,20 @@ var coreLuaScripts embed.FS
 
 // LuaEngine handles Lua script execution and line processing
 type LuaEngine struct {
-	state           *lua.LState
-	scriptDir       string
-	eventSystem     events.EventSystem
-	outputBuffer    []*types.Line    // Buffer to collect output lines during script execution
-	bufferMutex     sync.Mutex       // Mutex to protect the buffer during concurrent access
+	state        *lua.LState
+	scriptDir    string
+	eventSystem  events.EventSystem
+	outputBuffer []*types.Line // Buffer to collect output lines during script execution
+	bufferMutex  sync.Mutex    // Mutex to protect the buffer during concurrent access
 }
 
 // NewLuaEngine creates a new Lua scripting engine
 func NewLuaEngine(eventSystem events.EventSystem, scriptDir string) (*LuaEngine, error) {
 	state := lua.NewState()
 	engine := &LuaEngine{
-		state:           state,
-		scriptDir:       scriptDir,
-		eventSystem:     eventSystem,
+		state:       state,
+		scriptDir:   scriptDir,
+		eventSystem: eventSystem,
 	}
 
 	// Initialize registry tables for processors
@@ -58,24 +58,24 @@ func NewLuaEngine(eventSystem events.EventSystem, scriptDir string) (*LuaEngine,
 // ProcessInput processes an input line through all registered input processors
 func (e *LuaEngine) ProcessInput(line *types.Line) {
 	// Process the input but ignore the return value
-	_ = e.processWithTable(line, InputProcessorTable, false)
-	
+	_ = e.processLineWithProcessors(line, InputProcessorTable, false)
+
 	// After processing, emit any output lines that were collected during processing
 	e.emitOutputLines()
 }
 
 // ProcessOutput processes an output line through all registered output processors
 func (e *LuaEngine) ProcessOutput(line *types.Line) *types.Line {
-	result := e.processWithTable(line, OutputProcessorTable, true)
-	
+	result := e.processLineWithProcessors(line, OutputProcessorTable, true)
+
 	// After processing, emit any output lines that were collected during processing
 	e.emitOutputLines()
-	
+
 	return result
 }
 
-// processWithTable processes a line using the specified processor table
-func (e *LuaEngine) processWithTable(line *types.Line, tableKey string, isOutput bool) *types.Line {
+// processLineWithProcessors processes a line using the specified processor table
+func (e *LuaEngine) processLineWithProcessors(line *types.Line, tableKey string, isOutput bool) *types.Line {
 	if line == nil {
 		return nil
 	}
@@ -88,18 +88,18 @@ func (e *LuaEngine) processWithTable(line *types.Line, tableKey string, isOutput
 
 	// Get the processor table from registry
 	processorTable := e.state.GetField(e.state.Get(lua.RegistryIndex).(*lua.LTable), tableKey).(*lua.LTable)
-	
+
 	// Process through each processor
 	for i := 1; i <= processorTable.Len(); i++ {
 		fn := processorTable.RawGetInt(i)
 		if fn.Type() != lua.LTFunction {
 			continue
 		}
-		
+
 		// Call the processor function with the line
 		e.state.Push(fn)
 		e.state.Push(ud)
-		
+
 		if err := e.state.PCall(1, 1, nil); err != nil {
 			// Log error but continue processing
 			processorType := "input"
@@ -109,7 +109,7 @@ func (e *LuaEngine) processWithTable(line *types.Line, tableKey string, isOutput
 			fmt.Printf("Error in %s processor: %v\n", processorType, err)
 			continue
 		}
-		
+
 		// Update line if a valid result was returned
 		if resultUD, ok := e.state.Get(-1).(*lua.LUserData); ok {
 			if resultLine, ok := resultUD.Value.(*LuaLine); ok {
@@ -119,7 +119,7 @@ func (e *LuaEngine) processWithTable(line *types.Line, tableKey string, isOutput
 		}
 		e.state.Pop(1)
 	}
-	
+
 	return luaLine.line
 }
 
@@ -128,11 +128,11 @@ func (e *LuaEngine) initRegistryTables() error {
 	// Create tables for input and output processors
 	inputTable := e.state.NewTable()
 	outputTable := e.state.NewTable()
-	
+
 	// Store in registry
 	e.state.SetField(e.state.Get(lua.RegistryIndex).(*lua.LTable), InputProcessorTable, inputTable)
 	e.state.SetField(e.state.Get(lua.RegistryIndex).(*lua.LTable), OutputProcessorTable, outputTable)
-	
+
 	return nil
 }
 
@@ -140,7 +140,7 @@ func (e *LuaEngine) initRegistryTables() error {
 func (e *LuaEngine) addInputProcessor(fn *lua.LFunction) {
 	// Get the input processor table from registry
 	inputTable := e.state.GetField(e.state.Get(lua.RegistryIndex).(*lua.LTable), InputProcessorTable).(*lua.LTable)
-	
+
 	// Add the function to the table with the next available index
 	inputTable.RawSetInt(inputTable.Len()+1, fn)
 }
@@ -149,7 +149,7 @@ func (e *LuaEngine) addInputProcessor(fn *lua.LFunction) {
 func (e *LuaEngine) addOutputProcessor(fn *lua.LFunction) {
 	// Get the output processor table from registry
 	outputTable := e.state.GetField(e.state.Get(lua.RegistryIndex).(*lua.LTable), OutputProcessorTable).(*lua.LTable)
-	
+
 	// Add the function to the table with the next available index
 	outputTable.RawSetInt(outputTable.Len()+1, fn)
 }
@@ -177,7 +177,7 @@ func (e *LuaEngine) loadCoreScripts() error {
 		if err != nil {
 			return fmt.Errorf("error reading %s: %w", module.path, err)
 		}
-		
+
 		if err := e.state.DoString(string(content)); err != nil {
 			return fmt.Errorf("error executing %s: %w", module.path, err)
 		}
@@ -201,42 +201,30 @@ func (e *LuaEngine) addOutputLine(line *types.Line) {
 	e.outputBuffer = append(e.outputBuffer, line)
 }
 
-// getOutputLines retrieves and clears the output buffer
-func (e *LuaEngine) getOutputLines() []*types.Line {
+// flushOutputLines retrieves and clears the output buffer
+func (e *LuaEngine) flushOutputLines() []*types.Line {
 	e.bufferMutex.Lock()
 	defer e.bufferMutex.Unlock()
-	
+
 	// Create a copy of the buffer
 	lines := make([]*types.Line, len(e.outputBuffer))
 	copy(lines, e.outputBuffer)
-	
+
 	// Clear the buffer
 	e.outputBuffer = e.outputBuffer[:0]
-	
+
 	return lines
 }
 
 // emitOutputLines emits all collected output lines as events
 func (e *LuaEngine) emitOutputLines() {
-	lines := e.getOutputLines()
+	lines := e.flushOutputLines()
 	for _, line := range lines {
 		e.eventSystem.Emit(events.Event{
 			Type: events.EventOutput, // We'll need to add this event type
 			Data: line,
 		})
 	}
-}
-
-// directOutput emits a line directly without processing
-func (e *LuaEngine) directOutput(line *types.Line) {
-	if line == nil {
-		return
-	}
-	
-	e.eventSystem.Emit(events.Event{
-		Type: events.EventOutput,
-		Data: line,
-	})
 }
 
 // Close closes the Lua state
@@ -251,7 +239,7 @@ func (e *LuaEngine) Close() {
 // This should be called regularly to ensure timely output even when there's no server activity
 func (e *LuaEngine) Tick() {
 	// TODO: Implement timer callbacks similar to Blightmud's timer system
-	
+
 	// Emit any buffered output lines
 	e.emitOutputLines()
 }

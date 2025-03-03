@@ -4,9 +4,8 @@ import "time"
 
 // Line represents a line of text from the MUD or client
 type Line struct {
-    Content     string    // Processed content
-    Raw         string    // Raw ANSI content
-    Display     string    // Display content (processed ANSI)
+    Display     string    // Processed content for display (after ANSI processing)
+    Raw         string    // Raw ANSI content (original text)
     Flags       LineFlags // Processing flags
     Replacement *string   // Optional replacement content
     Timestamp   time.Time // When this line was received
@@ -23,11 +22,22 @@ type LineFlags struct {
 }
 
 // NewLine creates a new line with the given content
-func NewLine(content string) *Line {
+func NewLine(raw string) *Line {
     return &Line{
-        Content: content,
-        Raw:     content,
-        Display: content,
+        Display: raw,
+        Raw:     raw,
+        Flags: LineFlags{
+            Source: "mud",
+        },
+        Timestamp: time.Now(),
+    }
+}
+
+// NewLineWithDisplay creates a new line with separate raw and display text
+func NewLineWithDisplay(raw string, display string) *Line {
+    return &Line{
+        Display: display,
+        Raw:     raw,
         Flags: LineFlags{
             Source: "mud",
         },
@@ -66,15 +76,14 @@ func (l *Line) GetContent() string {
     if l.Replacement != nil {
         return *l.Replacement
     }
-    return l.Content
+    return l.Display
 }
 
 // Clone creates a deep copy of the line
 func (l *Line) Clone() *Line {
     clone := &Line{
-        Content: l.Content,
-        Raw:     l.Raw,
         Display: l.Display,
+        Raw:     l.Raw,
         Flags:   l.Flags,
         Timestamp: l.Timestamp,
     }
@@ -83,4 +92,15 @@ func (l *Line) Clone() *Line {
         clone.Replacement = &content
     }
     return clone
+}
+
+// SetText sets the raw text and updates display to match
+func (l *Line) SetText(raw string) {
+    l.Raw = raw
+    l.Display = raw
+}
+
+// SetDisplayText sets only the display text
+func (l *Line) SetDisplayText(display string) {
+    l.Display = display
 }
