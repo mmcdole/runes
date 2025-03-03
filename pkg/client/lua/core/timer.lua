@@ -5,110 +5,78 @@
 
 -- Initialize the timer namespace
 runes.timer = runes.timer or {}
-local timers = {}  -- Private state
-local nextId = 1
+
+-- Wrapper functions for the native timer implementation
 
 ---
 -- Adds a new timer that executes a function at specified intervals.
--- @param interval number Time in milliseconds between executions
+-- @param interval number Time in seconds between executions
+-- @param count number Number of times to execute (0 for infinite)
 -- @param callback function Function to execute when the timer fires
--- @param repeating boolean If true, timer will continue executing until removed
--- @return number Timer ID that can be used to remove or modify the timer
--- @usage local timerId = runes.timer.add(1000, function()
+-- @return number Timer ID that can be used to remove the timer
+-- @usage local timerId = runes.timer.add(1, 0, function()
 --     runes.output("One second has passed!")
--- end, true)
-function runes.timer.add(interval, callback, repeating)
-    local id = nextId
-    nextId = nextId + 1
-    
-    timers[id] = {
-        interval = interval,
-        callback = callback,
-        repeating = repeating or false,
-        lastRun = runes.getTime(),
-        enabled = true
-    }
-    
-    return id
+-- end)
+function runes.timer.add(interval, count, callback)
+    -- Call the native timer.add function
+    return timer.add(interval, count, callback)
 end
 
 ---
 -- Removes a timer by its ID.
 -- @param id number The ID of the timer to remove
--- @return boolean True if the timer was found and removed, false otherwise
 -- @usage runes.timer.remove(timerId)
 function runes.timer.remove(id)
-    if timers[id] then
-        timers[id] = nil
-        return true
-    end
-    return false
+    -- Call the native timer.remove function
+    timer.remove(id)
 end
 
 ---
--- Enables a timer that was previously disabled.
--- @param id number The ID of the timer to enable
--- @return boolean True if the timer was found and enabled, false otherwise
--- @usage runes.timer.enable(timerId)
-function runes.timer.enable(id)
-    if timers[id] then
-        timers[id].enabled = true
-        return true
-    end
-    return false
+-- Clears all timers.
+-- @usage runes.timer.clear()
+function runes.timer.clear()
+    -- Call the native timer.clear function
+    timer.clear()
 end
 
 ---
--- Disables a timer without removing it.
--- @param id number The ID of the timer to disable
--- @return boolean True if the timer was found and disabled, false otherwise
--- @usage runes.timer.disable(timerId)
-function runes.timer.disable(id)
-    if timers[id] then
-        timers[id].enabled = false
-        return true
-    end
-    return false
+-- Gets all timer IDs.
+-- @return table A list of timer IDs
+-- @usage local ids = runes.timer.get_ids()
+function runes.timer.get_ids()
+    -- Call the native timer.get_ids function
+    return timer.get_ids()
 end
 
 ---
--- Lists all active timers.
--- @return table A list of timer IDs and their properties
--- @usage local timerList = runes.timer.list()
-function runes.timer.list()
-    local result = {}
-    for id, t in pairs(timers) do
-        result[id] = {
-            interval = t.interval,
-            repeating = t.repeating,
-            enabled = t.enabled
-        }
-    end
-    return result
+-- Registers a function to be called on every tick.
+-- @param callback function Function to call on every tick
+-- @usage runes.timer.on_tick(function(millis)
+--     runes.output("Tick: " .. millis .. "ms")
+-- end)
+function runes.timer.on_tick(callback)
+    -- Call the native timer.on_tick function
+    timer.on_tick(callback)
 end
 
--- Process timers (internal function)
-local function process_timers()
-    local currentTime = runes.getTime()
-    
-    for id, t in pairs(timers) do
-        if t.enabled and (currentTime - t.lastRun) >= t.interval then
-            t.lastRun = currentTime
-            
-            local status, err = pcall(t.callback)
-            if not status then
-                runes.log(string.format("Error in timer callback: %s", err))
-            end
-            
-            if not t.repeating then
-                timers[id] = nil
-            end
-        end
-    end
-end
+-- Backward compatibility functions
 
--- Register timer processor with the main loop
-runes.add_tick_handler(process_timers)
+---
+-- Adds a timer with millisecond precision (for backward compatibility).
+-- @param interval number Time in milliseconds between executions
+-- @param callback function Function to execute when the timer fires
+-- @param repeating boolean If true, timer will continue executing until removed
+-- @return number Timer ID that can be used to remove or modify the timer
+-- @usage local timerId = runes.timer.add_ms(1000, function()
+--     runes.output("One second has passed!")
+-- end, true)
+function runes.timer.add_ms(interval, callback, repeating)
+    local count = 0
+    if not repeating then
+        count = 1
+    end
+    return runes.timer.add(interval / 1000, count, callback)
+end
 
 -- For backward compatibility (optional)
 if _G.timer == nil then

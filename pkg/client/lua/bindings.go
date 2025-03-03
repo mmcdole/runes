@@ -21,6 +21,9 @@ func registerBindings(L *lua.LState, engine *LuaEngine) error {
 
 	// Register types
 	RegisterLine(L)
+	
+	// Register timer system
+	RegisterTimer(L, engine.timerManager)
 
 	// Create runes table
 	mt := L.NewTable()

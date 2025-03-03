@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/mmcdole/runes/pkg/client/events"
 	"github.com/mmcdole/runes/pkg/client/types"
@@ -25,7 +26,10 @@ type LuaEngine struct {
 	scriptDir    string
 	eventSystem  events.EventSystem
 	outputBuffer []*types.Line // Buffer to collect output lines during script execution
-	bufferMutex  sync.Mutex    // Mutex to protect the buffer during concurrent access
+	bufferMutex  sync.Mutex    // Mutex to protect the output buffer during concurrent access
+	timerManager *TimerManager // Manager for timer callbacks
+	// If you plan to use the Lua state concurrently, consider adding:
+	// stateMutex   sync.Mutex
 }
 
 // NewLuaEngine creates a new Lua scripting engine
@@ -37,10 +41,13 @@ func NewLuaEngine(eventSystem events.EventSystem, scriptDir string) (*LuaEngine,
 		eventSystem: eventSystem,
 	}
 
-	// Initialize registry tables for processors
+	// Initialize registry tables for input and output processors
 	if err := engine.initRegistryTables(); err != nil {
 		return nil, fmt.Errorf("failed to initialize registry tables: %w", err)
 	}
+
+	// Create and initialize the timer manager
+	engine.timerManager = NewTimerManager(engine)
 
 	// Register types and functions
 	if err := registerBindings(engine.state, engine); err != nil {
@@ -63,7 +70,7 @@ func (e *LuaEngine) ProcessInput(line *types.Line) {
 
 	// Process the input but ignore the return value
 	_ = e.applyProcessorsToLine(line, InputProcessorTable, false)
-	
+
 	// After processing, emit any output lines that were collected during processing
 	e.emitOutputLines()
 }
@@ -75,10 +82,10 @@ func (e *LuaEngine) ProcessOutput(line *types.Line) *types.Line {
 	}
 
 	result := e.applyProcessorsToLine(line, OutputProcessorTable, true)
-	
+
 	// After processing, emit any output lines that were collected during processing
 	e.emitOutputLines()
-	
+
 	return result
 }
 
@@ -209,22 +216,23 @@ func (e *LuaEngine) addOutputLine(line *types.Line) {
 	e.outputBuffer = append(e.outputBuffer, line)
 }
 
-// getOutputLines retrieves and clears the output buffer
+// getOutputLines retrieves and clears the output buffer.
+// This function is solely responsible for locking the outputBuffer.
 func (e *LuaEngine) getOutputLines() []*types.Line {
 	e.bufferMutex.Lock()
 	defer e.bufferMutex.Unlock()
-	
+
 	// Create a copy of the buffer
 	lines := make([]*types.Line, len(e.outputBuffer))
 	copy(lines, e.outputBuffer)
-	
+
 	// Clear the buffer
 	e.outputBuffer = e.outputBuffer[:0]
-	
+
 	return lines
 }
 
-// emitOutputLines emits all collected output lines as events
+// emitOutputLines emits all collected output lines as events.
 func (e *LuaEngine) emitOutputLines() {
 	lines := e.getOutputLines()
 	for _, line := range lines {
@@ -235,19 +243,41 @@ func (e *LuaEngine) emitOutputLines() {
 	}
 }
 
-// Tick processes any timed events and emits any buffered output lines
-// This should be called regularly to ensure timely output even when there's no server activity
+// Tick processes any timed events and emits any buffered output lines.
+// This should be called regularly to ensure timely output even when there's no server activity.
 func (e *LuaEngine) Tick() {
-	// TODO: Implement timer callbacks similar to Blightmud's timer system
+	// Process timers with the timer manager
+	if e.timerManager != nil {
+		e.timerManager.Tick(50 * time.Millisecond) // Default tick interval
+	}
 
 	// Emit any buffered output lines
 	e.emitOutputLines()
 }
 
-// Close closes the Lua state
+// Close closes the Lua state.
 func (e *LuaEngine) Close() {
+	// Clean up timer manager
+	if e.timerManager != nil {
+		e.timerManager.ClearTimers(true)  // Clear core timers
+		e.timerManager.ClearTimers(false) // Clear user timers
+	}
+
+	// Close Lua state
 	if e.state != nil {
 		e.state.Close()
 		e.state = nil
 	}
+
+	// Clear references
+	e.timerManager = nil
+}
+
+// logError logs an error message
+func (e *LuaEngine) logError(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	e.eventSystem.Emit(events.Event{
+		Type: events.EventError,
+		Data: msg,
+	})
 }
