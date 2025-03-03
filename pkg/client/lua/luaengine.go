@@ -1,9 +1,8 @@
 package lua
 
 import (
+	"embed"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/mmcdole/runes/pkg/client/events"
@@ -16,6 +15,9 @@ const (
 	InputProcessorTable  = "__input_processors"
 	OutputProcessorTable = "__output_processors"
 )
+
+//go:embed core/*.lua
+var coreLuaScripts embed.FS
 
 // LuaEngine handles Lua script execution and line processing
 type LuaEngine struct {
@@ -148,25 +150,32 @@ func (e *LuaEngine) addOutputProcessor(fn *lua.LFunction) {
 	outputTable.RawSetInt(outputTable.Len()+1, fn)
 }
 
-// loadCoreScripts loads the core Lua scripts
+// loadCoreScripts loads the core Lua scripts in a specific order
 func (e *LuaEngine) loadCoreScripts() error {
-	coreDir := filepath.Join(e.scriptDir, "core")
-	entries, err := os.ReadDir(coreDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // Core directory doesn't exist, that's ok
-		}
-		return fmt.Errorf("error reading core directory: %w", err)
+	// Define the order in which core modules should be loaded
+	coreModules := []struct {
+		name string
+		path string
+	}{
+		{"runes", "core/runes.lua"},       // Core API, must be first
+		{"colors", "core/colors.lua"},     // Colors and formatting constants
+		{"events", "core/events.lua"},     // Event system, others depend on it
+		{"alias", "core/alias.lua"},       // Input and commands depend on this
+		{"input", "core/input.lua"},       // Core input handling
+		{"trigger", "core/trigger.lua"},   // Output processing
+		{"timer", "core/timer.lua"},       // Timer system
+		{"commands", "core/commands.lua"}, // Default commands, depends on alias
+		{"init", "core/init.lua"},         // Final initialization
 	}
 
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".lua" {
-			continue
+	for _, module := range coreModules {
+		content, err := coreLuaScripts.ReadFile(module.path)
+		if err != nil {
+			return fmt.Errorf("error reading %s: %w", module.path, err)
 		}
-
-		path := filepath.Join(coreDir, entry.Name())
-		if err := e.loadUserScript(path); err != nil {
-			return fmt.Errorf("error loading core script %s: %w", entry.Name(), err)
+		
+		if err := e.state.DoString(string(content)); err != nil {
+			return fmt.Errorf("error executing %s: %w", module.path, err)
 		}
 	}
 

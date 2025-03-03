@@ -12,30 +12,23 @@ runes.add_input_listener(function(line)
     return line
 end)
 
--- Handle connect/disconnect
-runes.on_connect(function(host, port)
-    local line = line.new("Connected to " .. host .. ":" .. port)
-    line:matched(true)  -- Mark as system message
-    return line
+-- Register connect event handler using the events system
+runes.events.add("connected", function(data)
+    local message = "Connected to " .. data.host .. ":" .. data.port
+    runes.output(message)
 end)
 
-runes.on_disconnect(function()
-    local line = line.new("Disconnected from server")
-    line:matched(true)  -- Mark as system message
-    return line
+-- Register disconnect event handler using the events system
+runes.events.add("disconnected", function()
+    runes.output("Disconnected from server")
 end)
 
--- Handle script resets
-runes.on_reset(function()
+-- Register script reset event handler
+runes.events.add("reset", function()
     -- Re-initialize any state needed after reset
-    print("Script reset")
+    runes.output("Script reset")
 end)
 
 -- Initialize message
-local welcome = line.new(C_GREEN .. "Welcome to Runes, the MUD client!" .. C_RESET)
-welcome:matched(true)  -- Mark as system message
-runes.output(welcome)
-
-local help = line.new("Type /help for a list of available commands")
-help:matched(true)  -- Mark as system message
-runes.output(help)
+runes.output(C_GREEN .. "Welcome to Runes, the MUD client!" .. C_RESET)
+runes.output("Type /help for a list of available commands")

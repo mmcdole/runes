@@ -152,8 +152,8 @@ func (b *luaBindings) send(L *lua.LState) int {
 	line := types.NewClientLine(text)
 	if processed := b.engine.ProcessInput(line); processed != nil {
 		b.engine.eventSystem.Emit(events.Event{
-			Type: events.EventRedraw,
-			Data: processed,
+			Type: events.EventCommand,
+			Data: processed.Content,
 		})
 	}
 	return 0
@@ -163,13 +163,11 @@ func (b *luaBindings) send(L *lua.LState) int {
 // Lua syntax: runes._send_raw(text)
 func (b *luaBindings) sendCommand(L *lua.LState) int {
 	text := L.ToString(1)
-	line := types.NewClientLine(text)
-	if processed := b.engine.ProcessInput(line); processed != nil {
-		b.engine.eventSystem.Emit(events.Event{
-			Type: events.EventRedraw,
-			Data: processed,
-		})
-	}
+	// Skip input processing for raw commands to prevent infinite loops
+	b.engine.eventSystem.Emit(events.Event{
+		Type: events.EventCommand,
+		Data: text,
+	})
 	return 0
 }
 

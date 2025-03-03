@@ -33,6 +33,9 @@ const (
 	// Buffer management
 	EventListBuffers  EventType = "list_buffers"
 	EventSwitchBuffer EventType = "switch_buffer"
+
+	// Command events
+	EventCommand     EventType = "command"      // Command to be sent to the server
 )
 
 type Event struct {

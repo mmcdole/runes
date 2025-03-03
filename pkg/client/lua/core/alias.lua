@@ -23,7 +23,13 @@ function runes.alias.add(pattern, callback)
     if type(callback) == "string" then
         local command = callback
         callback = function(matches, input)
-            runes.send(command)
+            -- Split the command by semicolons and send each part
+            for cmd in (command..";"):gmatch("(.-);") do
+                cmd = cmd:match("^%s*(.-)%s*$") -- Trim whitespace
+                if cmd ~= "" then
+                    runes.send(cmd)
+                end
+            end
         end
     elseif type(callback) ~= "function" then
         return

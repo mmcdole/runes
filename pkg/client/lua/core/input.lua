@@ -4,6 +4,7 @@
 
 -- Initialize the input namespace
 runes.input = runes.input or {}
+
 local commandQueue = {}
 local commandSeparator = commandSeparator or ";"
 
@@ -50,10 +51,14 @@ local function enqueue(commandStr)
 end
 
 -- Public API
-function runes.input.send(commandStr)
+---
+-- Sends text to the server, with alias processing.
+-- @param text The text to send
+-- @usage runes.input.send("look")
+function runes.input.send(text)
     -- Echo command with green prompt
-    runes.output(C_YELLOW .. "> " .. commandStr .. C_RESET .. "\n")
-    enqueue(commandStr)
+    runes.output(C_YELLOW .. "> " .. text .. C_RESET .. "\n")
+    enqueue(text)
 end
 
 -- Process input lines

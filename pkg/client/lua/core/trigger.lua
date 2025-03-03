@@ -193,7 +193,7 @@ local function process_output(line)
 end
 
 -- Register with the output processor system
-runes.add_output_processor(process_output)
+runes._add_output_processor(process_output)
 
 -- For backward compatibility (optional)
 if _G.trigger == nil then
