@@ -13,18 +13,18 @@ runes.add_input_listener(function(line)
 end)
 
 -- Register connect event handler using the events system
-runes.events.add("connected", function(data)
+events.add("connected", function(data)
     local message = "Connected to " .. data.host .. ":" .. data.port
     runes.output(message)
 end)
 
 -- Register disconnect event handler using the events system
-runes.events.add("disconnected", function()
+events.add("disconnected", function()
     runes.output("Disconnected from server")
 end)
 
 -- Register script reset event handler
-runes.events.add("reset", function()
+events.add("reset", function()
     -- Re-initialize any state needed after reset
     runes.output("Script reset")
 end)

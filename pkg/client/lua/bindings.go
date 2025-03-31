@@ -21,7 +21,7 @@ func registerBindings(L *lua.LState, engine *LuaEngine) error {
 
 	// Register types
 	RegisterLine(L)
-	
+
 	// Register timer system
 	RegisterTimer(L, engine.timerManager)
 
@@ -32,9 +32,7 @@ func registerBindings(L *lua.LState, engine *LuaEngine) error {
 	// Register functions
 	L.SetFuncs(mt, map[string]lua.LGFunction{
 		// Core system bindings
-		"_debug":   bindings.debug,
 		"_version": bindings.version,
-		"_log":     bindings.log,
 
 		// Connection bindings
 		"_connect":    bindings.connect,
@@ -62,33 +60,11 @@ func registerBindings(L *lua.LState, engine *LuaEngine) error {
 
 // Core system bindings
 
-// debug prints a debug message to the console
-// Lua syntax: runes._debug(text)
-func (b *luaBindings) debug(L *lua.LState) int {
-	text := L.ToString(1)
-	b.engine.eventSystem.Emit(events.Event{
-		Type: events.EventDebug,
-		Data: text,
-	})
-	return 0
-}
-
 // version returns the version of Runes
 // Lua syntax: runes._version() -> string
 func (b *luaBindings) version(L *lua.LState) int {
 	L.Push(lua.LString("1.0.0"))
 	return 1
-}
-
-// log prints a log message to the console
-// Lua syntax: runes._log(text)
-func (b *luaBindings) log(L *lua.LState) int {
-	text := L.ToString(1)
-	b.engine.eventSystem.Emit(events.Event{
-		Type: events.EventLog,
-		Data: text,
-	})
-	return 0
 }
 
 // Connection bindings

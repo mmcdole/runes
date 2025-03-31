@@ -4,7 +4,7 @@
 -- @module trigger
 
 -- Initialize the trigger namespace
-runes.trigger = runes.trigger or {}
+trigger = trigger or {}
 
 -- Private state
 local triggers = {}  -- Private state
@@ -17,12 +17,12 @@ local next_id = 1    -- For unique trigger IDs
 -- @param options table|function Optional table of settings or the callback function
 -- @param callback function Function to call when pattern matches (if options provided)
 -- @return number Unique ID of the created trigger
--- @usage runes.trigger.add("hp_watch", "HP: (%d+)/(%d+)", function(matches, line)
+-- @usage trigger.add("hp_watch", "HP: (%d+)/(%d+)", function(matches, line)
 --    if tonumber(matches[1]) < 100 then
 --        runes.output("Low health warning!")
 --    end
 -- end)
-function runes.trigger.add(name, pattern, options, callback)
+function trigger.add(name, pattern, options, callback)
     -- Handle case where options is omitted and callback is passed as third argument
     if type(options) == "function" and callback == nil then
         callback = options
@@ -54,9 +54,9 @@ end
 -- Removes a trigger by its ID or name.
 -- @param id_or_name number|string The ID or name of the trigger to remove
 -- @return boolean True if the trigger was found and removed, false otherwise
--- @usage runes.trigger.remove(5)  -- Remove by ID
--- @usage runes.trigger.remove("hp_watch")  -- Remove by name
-function runes.trigger.remove(id_or_name)
+-- @usage trigger.remove(5)  -- Remove by ID
+-- @usage trigger.remove("hp_watch")  -- Remove by name
+function trigger.remove(id_or_name)
     if type(id_or_name) == "number" then
         -- Remove by ID
         if triggers[id_or_name] then
@@ -79,10 +79,10 @@ end
 -- Enables a trigger by its ID or name.
 -- @param id_or_name number|string The ID or name of the trigger to enable
 -- @return boolean True if the trigger was found and enabled, false otherwise
--- @usage runes.trigger.enable(5)
--- @usage runes.trigger.enable("hp_watch")
-function runes.trigger.enable(id_or_name)
-    local t = runes.trigger.get(id_or_name)
+-- @usage trigger.enable(5)
+-- @usage trigger.enable("hp_watch")
+function trigger.enable(id_or_name)
+    local t = trigger.get(id_or_name)
     if t then
         t.enabled = true
         return true
@@ -94,10 +94,10 @@ end
 -- Disables a trigger by its ID or name.
 -- @param id_or_name number|string The ID or name of the trigger to disable
 -- @return boolean True if the trigger was found and disabled, false otherwise
--- @usage runes.trigger.disable(5)
--- @usage runes.trigger.disable("hp_watch")
-function runes.trigger.disable(id_or_name)
-    local t = runes.trigger.get(id_or_name)
+-- @usage trigger.disable(5)
+-- @usage trigger.disable("hp_watch")
+function trigger.disable(id_or_name)
+    local t = trigger.get(id_or_name)
     if t then
         t.enabled = false
         return true
@@ -109,9 +109,9 @@ end
 -- Gets a trigger by its ID or name.
 -- @param id_or_name number|string The ID or name of the trigger to retrieve
 -- @return table|nil The trigger table if found, nil otherwise
--- @usage local trigger = runes.trigger.get(5)
--- @usage local trigger = runes.trigger.get("hp_watch")
-function runes.trigger.get(id_or_name)
+-- @usage local trigger = trigger.get(5)
+-- @usage local trigger = trigger.get("hp_watch")
+function trigger.get(id_or_name)
     if type(id_or_name) == "number" then
         return triggers[id_or_name]
     else
@@ -127,11 +127,11 @@ end
 ---
 -- Lists all triggers.
 -- @return table Array of trigger information tables
--- @usage local all_triggers = runes.trigger.list()
+-- @usage local all_triggers = trigger.list()
 -- for _, t in ipairs(all_triggers) do
 --     runes.output(string.format("Trigger: %s (ID: %d)", t.name, t.id))
 -- end
-function runes.trigger.list()
+function trigger.list()
     local result = {}
     for id, t in pairs(triggers) do
         table.insert(result, {
@@ -148,8 +148,8 @@ end
 
 ---
 -- Clears all triggers.
--- @usage runes.trigger.clear()
-function runes.trigger.clear()
+-- @usage trigger.clear()
+function trigger.clear()
     triggers = {}
 end
 
@@ -165,8 +165,7 @@ local function check_trigger(t, line)
     -- Try to match the pattern
     local matches = {string.match(content, t.pattern)}
     if matches[1] then
-        runes.debug(string.format("Trigger %q (ID: %d) matched: %s", t.name, t.id, content))
-        
+
         -- Apply gagging if specified
         if t.gag then
             line:gag(true)
@@ -195,7 +194,3 @@ end
 -- Register with the output processor system
 runes._add_output_processor(process_output)
 
--- For backward compatibility (optional)
-if _G.trigger == nil then
-    _G.trigger = runes.trigger
-end

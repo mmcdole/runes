@@ -4,7 +4,7 @@
 -- @module timer
 
 -- Initialize the timer namespace
-runes.timer = runes.timer or {}
+timer = timer or {}
 
 -- Wrapper functions for the native timer implementation
 
@@ -14,10 +14,10 @@ runes.timer = runes.timer or {}
 -- @param count number Number of times to execute (0 for infinite)
 -- @param callback function Function to execute when the timer fires
 -- @return number Timer ID that can be used to remove the timer
--- @usage local timerId = runes.timer.add(1, 0, function()
+-- @usage local timerId = timer.add(1, 0, function()
 --     runes.output("One second has passed!")
 -- end)
-function runes.timer.add(interval, count, callback)
+function timer.add(interval, count, callback)
     -- Call the native timer.add function
     return timer.add(interval, count, callback)
 end
@@ -25,16 +25,16 @@ end
 ---
 -- Removes a timer by its ID.
 -- @param id number The ID of the timer to remove
--- @usage runes.timer.remove(timerId)
-function runes.timer.remove(id)
+-- @usage timer.remove(timerId)
+function timer.remove(id)
     -- Call the native timer.remove function
     timer.remove(id)
 end
 
 ---
 -- Clears all timers.
--- @usage runes.timer.clear()
-function runes.timer.clear()
+-- @usage timer.clear()
+function timer.clear()
     -- Call the native timer.clear function
     timer.clear()
 end
@@ -42,8 +42,8 @@ end
 ---
 -- Gets all timer IDs.
 -- @return table A list of timer IDs
--- @usage local ids = runes.timer.get_ids()
-function runes.timer.get_ids()
+-- @usage local ids = timer.get_ids()
+function timer.get_ids()
     -- Call the native timer.get_ids function
     return timer.get_ids()
 end
@@ -51,10 +51,10 @@ end
 ---
 -- Registers a function to be called on every tick.
 -- @param callback function Function to call on every tick
--- @usage runes.timer.on_tick(function(millis)
+-- @usage timer.on_tick(function(millis)
 --     runes.output("Tick: " .. millis .. "ms")
 -- end)
-function runes.timer.on_tick(callback)
+function timer.on_tick(callback)
     -- Call the native timer.on_tick function
     timer.on_tick(callback)
 end
@@ -67,18 +67,14 @@ end
 -- @param callback function Function to execute when the timer fires
 -- @param repeating boolean If true, timer will continue executing until removed
 -- @return number Timer ID that can be used to remove or modify the timer
--- @usage local timerId = runes.timer.add_ms(1000, function()
+-- @usage local timerId = timer.add_ms(1000, function()
 --     runes.output("One second has passed!")
 -- end, true)
-function runes.timer.add_ms(interval, callback, repeating)
+function timer.add_ms(interval, callback, repeating)
     local count = 0
     if not repeating then
         count = 1
     end
-    return runes.timer.add(interval / 1000, count, callback)
+    return timer.add(interval / 1000, count, callback)
 end
 
--- For backward compatibility (optional)
-if _G.timer == nil then
-    _G.timer = runes.timer
-end

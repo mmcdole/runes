@@ -4,7 +4,7 @@
 -- @module events
 
 -- Initialize the events namespace
-runes.events = runes.events or {}
+events = events or {}
 
 -- Private state
 local handlers = {}
@@ -13,10 +13,10 @@ local handlers = {}
 -- Registers a handler function for a specific event.
 -- @param eventName string The name of the event to listen for
 -- @param handler function The function to call when the event occurs
--- @usage runes.events.add("connect", function(data)
+-- @usage events.add("connect", function(data)
 --     runes.output("Connected to server: " .. data.host)
 -- end)
-function runes.events.add(eventName, handler)
+function events.add(eventName, handler)
     if not handlers[eventName] then
         handlers[eventName] = {}
     end
@@ -27,8 +27,8 @@ end
 -- Emits an event, triggering all registered handlers.
 -- @param eventName string The name of the event to emit
 -- @param eventData any Data to pass to the event handlers
--- @usage runes.events.emit("custom_event", { value = 123 })
-function runes.events.emit(eventName, eventData)
+-- @usage events.emit("custom_event", { value = 123 })
+function events.emit(eventName, eventData)
     if not handlers[eventName] then
         return
     end
@@ -46,8 +46,8 @@ end
 ---
 -- Removes all handlers for a specific event.
 -- @param eventName string The name of the event to clear handlers for
--- @usage runes.events.clear("custom_event")
-function runes.events.clear(eventName)
+-- @usage events.clear("custom_event")
+function events.clear(eventName)
     handlers[eventName] = {}
 end
 
@@ -56,8 +56,8 @@ end
 -- @param eventName string The name of the event
 -- @param handler function The handler function to remove
 -- @return boolean True if the handler was found and removed, false otherwise
--- @usage runes.events.remove("connect", myConnectHandler)
-function runes.events.remove(eventName, handler)
+-- @usage events.remove("connect", myConnectHandler)
+function events.remove(eventName, handler)
     if not handlers[eventName] then
         return false
     end
@@ -75,34 +75,14 @@ end
 ---
 -- Lists all events that have registered handlers.
 -- @return table A list of event names
--- @usage local events = runes.events.list()
+-- @usage local events = events.list()
 -- for _, name in ipairs(events) do
 --     runes.output("Event: " .. name)
 -- end
-function runes.events.list()
+function events.list()
     local result = {}
     for eventName, _ in pairs(handlers) do
         table.insert(result, eventName)
     end
     return result
 end
-
--- Register system event handlers
-runes.events.add("connect", function(data)
-    -- Handle connect event
-end)
-
-runes.events.add("disconnect", function(data)
-    -- Handle disconnect event
-end)
-
-runes.events.add("reset", function(data)
-    -- Handle reset event
-end)
-
--- For backward compatibility (optional)
-if _G.events == nil then
-    _G.events = runes.events
-end
-
-return runes.events

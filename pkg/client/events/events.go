@@ -26,10 +26,6 @@ const (
 	EventScroll       EventType = "scroll"       // Scroll viewport
 	EventOutput       EventType = "output"       // Output text to display
     
-	// Debug/Logging
-	EventLog         EventType = "log"          // Log message
-	EventDebug       EventType = "debug"        // Debug message
-    
 	// Buffer management
 	EventListBuffers  EventType = "list_buffers"
 	EventSwitchBuffer EventType = "switch_buffer"

@@ -119,5 +119,4 @@ function runes.add_tick_handler(handler)
     table.insert(runes._tick_handlers, handler)
 end
 
--- Export the runes module globally
-_G.runes = runes
+

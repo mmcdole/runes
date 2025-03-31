@@ -55,7 +55,7 @@ end
 -- Sends text to the server, with alias processing.
 -- @param text The text to send
 -- @usage runes.input.send("look")
-function runes.input.send(text)
+function runes.send(text)
     -- Echo command with green prompt
     runes.output(C_YELLOW .. "> " .. text .. C_RESET .. "\n")
     enqueue(text)

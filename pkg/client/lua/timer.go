@@ -4,7 +4,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mmcdole/runes/pkg/client/events"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -116,7 +115,6 @@ func (tm *TimerManager) Tick(elapsed time.Duration) {
 	
 	// Get a list of timers to process
 	var timersToProcess []uint32
-	var tickCallbacks []uint32
 	
 	tm.mutex.Lock()
 	// First, collect IDs of timers that need processing
@@ -136,8 +134,7 @@ func (tm *TimerManager) Tick(elapsed time.Duration) {
 			NRet:    0,
 			Protect: true,
 		}, lua.LString("_tick"), lua.LNumber(elapsed.Milliseconds())); err != nil {
-			// Log the error but continue processing
-			tm.engine.logError("Error in timer tick callback: %v", err)
+			// Ignore errors in timer tick callbacks
 		}
 	}
 	
@@ -184,8 +181,7 @@ func (tm *TimerManager) processTimer(id uint32) {
 			NRet:    0,
 			Protect: true,
 		}, lua.LString("_execute"), lua.LNumber(id)); err != nil {
-			// Log the error but continue processing
-			tm.engine.logError("Error executing timer %d: %v", id, err)
+			// Ignore errors in timer execution
 		}
 	}
 }
@@ -315,8 +311,7 @@ func (tm *TimerManager) luaExecuteTimer(L *lua.LState) int {
 			NRet:    0,
 			Protect: true,
 		}); err != nil {
-			// Log the error
-			tm.engine.logError("Error in timer callback %d: %v", id, err)
+			// Ignore errors in timer callback
 		}
 	}
 	
@@ -342,8 +337,7 @@ func (tm *TimerManager) luaTickTimers(L *lua.LState) int {
 				NRet:    0,
 				Protect: true,
 			}, millis); err != nil {
-				// Log the error
-				tm.engine.logError("Error in tick callback: %v", err)
+				// Ignore errors in tick callback
 			}
 		}
 	})

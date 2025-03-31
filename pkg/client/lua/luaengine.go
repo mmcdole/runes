@@ -272,12 +272,3 @@ func (e *LuaEngine) Close() {
 	// Clear references
 	e.timerManager = nil
 }
-
-// logError logs an error message
-func (e *LuaEngine) logError(format string, args ...interface{}) {
-	msg := fmt.Sprintf(format, args...)
-	e.eventSystem.Emit(events.Event{
-		Type: events.EventError,
-		Data: msg,
-	})
-}
