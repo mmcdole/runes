@@ -1,8 +1,8 @@
-package lua
+package scripting
 
 import (
-	"github.com/mmcdole/runes/pkg/client/events"
-	"github.com/mmcdole/runes/pkg/client/types"
+	"github.com/mmcdole/runes/pkg/events"
+	"github.com/mmcdole/runes/pkg/types"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -181,7 +181,7 @@ func (b *luaBindings) addInputProcessor(L *lua.LState) int {
 // Lua syntax: runes._load_script(path) -> error or nil
 func (b *luaBindings) loadScript(L *lua.LState) int {
 	path := L.ToString(1)
-	if err := b.engine.loadUserScript(path); err != nil {
+	if err := b.engine.LoadScript(path); err != nil {
 		L.Push(lua.LString(err.Error()))
 		return 1
 	}

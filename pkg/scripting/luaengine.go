@@ -1,4 +1,4 @@
-package lua
+package scripting
 
 import (
 	"embed"
@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mmcdole/runes/pkg/client/events"
-	"github.com/mmcdole/runes/pkg/client/types"
+	"github.com/mmcdole/runes/pkg/events"
+	"github.com/mmcdole/runes/pkg/types"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -68,7 +68,7 @@ func (e *LuaEngine) ProcessInput(line *types.Line) {
 		return
 	}
 
-	// Process the input but ignore the return value
+	// Process the input
 	_ = e.applyProcessorsToLine(line, InputProcessorTable, false)
 
 	// After processing, emit any output lines that were collected during processing
@@ -201,8 +201,8 @@ func (e *LuaEngine) loadCoreScripts() error {
 	return nil
 }
 
-// loadUserScript loads a user script
-func (e *LuaEngine) loadUserScript(path string) error {
+// LoadScript loads a user script
+func (e *LuaEngine) LoadScript(path string) error {
 	if err := e.state.DoFile(path); err != nil {
 		return fmt.Errorf("error loading script %s: %w", path, err)
 	}

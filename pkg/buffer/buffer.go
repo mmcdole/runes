@@ -3,7 +3,7 @@ package buffer
 import (
     "sync"
 
-    "github.com/mmcdole/runes/pkg/client/types"
+    "github.com/mmcdole/runes/pkg/types"
 )
 
 // Buffer represents a scrollable buffer of lines

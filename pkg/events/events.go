@@ -25,6 +25,7 @@ const (
 	EventResize       EventType = "resize"       // Terminal resize
 	EventScroll       EventType = "scroll"       // Scroll viewport
 	EventOutput       EventType = "output"       // Output text to display
+	EventInput        EventType = "input"        // Input text from user
     
 	// Buffer management
 	EventListBuffers  EventType = "list_buffers"

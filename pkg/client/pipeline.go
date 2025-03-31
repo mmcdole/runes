@@ -1,13 +1,12 @@
-package connection
+package client
 
 import (
     "bytes"
 
-    "github.com/mmcdole/runes/pkg/client/ansi"
-    "github.com/mmcdole/runes/pkg/client/events"
-    "github.com/mmcdole/runes/pkg/client/lua"
-    "github.com/mmcdole/runes/pkg/client/types"
-    "github.com/mmcdole/runes/pkg/protocol/telnet"
+    "github.com/mmcdole/runes/pkg/events"
+    "github.com/mmcdole/runes/pkg/network/telnet"
+    scripting "github.com/mmcdole/runes/pkg/scripting"
+    "github.com/mmcdole/runes/pkg/types"
 )
 
 // OutputProcessor handles the processing of telnet output into lines
@@ -15,18 +14,18 @@ type OutputProcessor struct {
     conn        *telnet.TelnetConnection
     buffer      []byte
     events      events.EventSystem
-    luaEngine   *lua.LuaEngine
-    ansiProc    *ansi.Processor
+    luaEngine   *scripting.LuaEngine
+    ansiProc    *Processor
 }
 
 // NewOutputProcessor creates a new output processor
-func NewOutputProcessor(conn *telnet.TelnetConnection, events events.EventSystem, luaEngine *lua.LuaEngine) *OutputProcessor {
+func NewOutputProcessor(conn *telnet.TelnetConnection, events events.EventSystem, luaEngine *scripting.LuaEngine) *OutputProcessor {
     return &OutputProcessor{
         conn:      conn,
         events:    events,
         luaEngine: luaEngine,
         buffer:    make([]byte, 0, 4096),
-        ansiProc:  ansi.NewProcessor(),
+        ansiProc:  NewProcessor(),
     }
 }
 

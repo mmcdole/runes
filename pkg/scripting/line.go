@@ -1,7 +1,7 @@
-package lua
+package scripting
 
 import (
-    "github.com/mmcdole/runes/pkg/client/types"
+    "github.com/mmcdole/runes/pkg/types"
     lua "github.com/yuin/gopher-lua"
 )
 

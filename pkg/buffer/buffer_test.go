@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mmcdole/runes/pkg/client/types"
+	"github.com/mmcdole/runes/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 

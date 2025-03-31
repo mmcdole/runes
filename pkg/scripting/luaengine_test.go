@@ -1,4 +1,4 @@
-package lua
+package scripting
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mmcdole/runes/pkg/client/events"
-	"github.com/mmcdole/runes/pkg/client/types"
+	"github.com/mmcdole/runes/pkg/events"
+	"github.com/mmcdole/runes/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -7,7 +7,7 @@ import (
 	"os/signal"
 
 	"github.com/mmcdole/runes/pkg/client"
-	"github.com/mmcdole/runes/pkg/client/events"
+	"github.com/mmcdole/runes/pkg/events"
 )
 
 func main() {

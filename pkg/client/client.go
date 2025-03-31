@@ -7,11 +7,11 @@ import (
     "path/filepath"
     "time"
 
-    "github.com/mmcdole/runes/pkg/client/buffer"
-    "github.com/mmcdole/runes/pkg/client/connection"
-    "github.com/mmcdole/runes/pkg/client/events"
-    "github.com/mmcdole/runes/pkg/client/lua"
-    "github.com/mmcdole/runes/pkg/client/types"
+    "github.com/mmcdole/runes/pkg/buffer"
+    "github.com/mmcdole/runes/pkg/events"
+    "github.com/mmcdole/runes/pkg/network/telnet"
+    "github.com/mmcdole/runes/pkg/scripting"
+    "github.com/mmcdole/runes/pkg/types"
     "github.com/mmcdole/runes/pkg/client/ui/components"
     "github.com/mmcdole/runes/pkg/client/ui/layout"
 )
@@ -20,8 +20,8 @@ import (
 type Client struct {
     // Core components
     eventSystem events.EventSystem
-    luaEngine   *lua.LuaEngine
-    conn        *connection.Connection
+    luaEngine   *scripting.LuaEngine
+    conn        *telnet.TelnetConnection
     
     // UI components
     layout    *layout.Layout
@@ -67,7 +67,7 @@ func New(scriptPath string) (*Client, error) {
 
     // Create Lua engine
     var err error
-    client.luaEngine, err = lua.New(client.eventSystem)
+    client.luaEngine, err = scripting.NewLuaEngine(client.eventSystem, client.scriptPath)
     if err != nil {
         return nil, fmt.Errorf("failed to create Lua engine: %w", err)
     }
@@ -124,15 +124,15 @@ func (c *Client) handleInput(event events.Event) {
     line := types.NewClientLine(text)
 
     // Process through Lua
-    if processed := c.luaEngine.ProcessInput(line); processed != nil && !processed.Flags.Gag {
-        // Send to server
-        if c.conn != nil {
-            c.conn.Send(processed.Raw)
-        }
+    c.luaEngine.ProcessInput(line)
 
-        // Add to buffer
-        c.buffer.Add(processed)
+    // Send to server
+    if c.conn != nil && !line.Flags.Gag {
+        c.conn.Write([]byte(line.Raw))
     }
+
+    // Add to buffer
+    c.buffer.Add(line)
 }
 
 func (c *Client) handleConnect(event events.Event) {
@@ -143,17 +143,13 @@ func (c *Client) handleConnect(event events.Event) {
 
     // Create connection
     var err error
-    c.conn, err = connection.New(data.Host, data.Port, c.eventSystem, c.luaEngine)
+    c.conn, err = telnet.NewTelnetConnection(data.Host, data.Port, false)
     if err != nil {
         c.status.SetError(fmt.Sprintf("Failed to connect: %v", err))
         return
     }
 
-    // Start connection
-    if err := c.conn.Start(); err != nil {
-        c.status.SetError(fmt.Sprintf("Failed to start connection: %v", err))
-        return
-    }
+    // Connection is ready to use after creation
 
     c.status.SetMessage(fmt.Sprintf("Connected to %s:%d", data.Host, data.Port))
 }
@@ -194,7 +190,7 @@ func (c *Client) loadCoreScripts() error {
     for _, entry := range entries {
         if !entry.IsDir() && filepath.Ext(entry.Name()) == ".lua" {
             path := filepath.Join(corePath, entry.Name())
-            if err := c.luaEngine.LoadScript(path); err != nil {
+            if err := c.luaEngine.LoadUserScript(path); err != nil {
                 return fmt.Errorf("failed to load core script %s: %w", entry.Name(), err)
             }
             log.Printf("[Client] Loaded core script: %s", entry.Name())
@@ -214,7 +210,7 @@ func (c *Client) loadUserScripts() error {
     for _, entry := range entries {
         if !entry.IsDir() && filepath.Ext(entry.Name()) == ".lua" {
             path := filepath.Join(c.scriptPath, entry.Name())
-            if err := c.luaEngine.LoadScript(path); err != nil {
+            if err := c.luaEngine.LoadUserScript(path); err != nil {
                 return fmt.Errorf("failed to load user script %s: %w", entry.Name(), err)
             }
             log.Printf("[Client] Loaded user script: %s", entry.Name())
