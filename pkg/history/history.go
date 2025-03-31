@@ -10,8 +10,8 @@ type History struct {
 	maxSize  int
 }
 
-// New creates a new History instance with default settings
-func New() *History {
+// NewHistory creates a new History instance with default settings
+func NewHistory() *History {
 	return &History{
 		commands: make([]string, 0, DefaultMaxSize),
 		maxSize:  DefaultMaxSize,

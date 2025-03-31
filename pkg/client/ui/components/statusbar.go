@@ -3,7 +3,7 @@ package components
 import (
 	"fmt"
 	"strings"
-	"github.com/mmcdole/runes/pkg/client/terminal"
+	"github.com/mmcdole/runes/pkg/terminal"
 	"github.com/mmcdole/runes/pkg/client/ui/layout"
 )
 

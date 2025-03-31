@@ -57,11 +57,11 @@ func RegisterTimer(L *lua.LState, tm *TimerManager) {
 	
 	// Register timer functions
 	L.SetFuncs(timerMod, map[string]lua.LGFunction{
-		"add":     tm.luaAddTimer,
-		"remove":  tm.luaRemoveTimer,
-		"clear":   tm.luaClearTimers,
-		"get_ids": tm.luaGetTimerIDs,
-		"on_tick": tm.luaOnTick,
+		"_add":     tm.luaAddTimer,
+		"_remove":  tm.luaRemoveTimer,
+		"_clear":   tm.luaClearTimers,
+		"_get_ids": tm.luaGetTimerIDs,
+		"_on_tick": tm.luaOnTick,
 		
 		// Internal functions (not to be called directly by users)
 		"_execute": tm.luaExecuteTimer,

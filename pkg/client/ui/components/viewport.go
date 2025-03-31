@@ -2,9 +2,9 @@ package components
 
 import (
     "fmt"
-    "github.com/mmcdole/runes/pkg/client/buffer"
-    "github.com/mmcdole/runes/pkg/client/terminal"
-    "github.com/mmcdole/runes/pkg/client/types"
+    "github.com/mmcdole/runes/pkg/buffer"
+    "github.com/mmcdole/runes/pkg/terminal"
+    "github.com/mmcdole/runes/pkg/types"
     "github.com/mmcdole/runes/pkg/client/ui/layout"
 )
 

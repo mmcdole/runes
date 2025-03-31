@@ -2,8 +2,8 @@ package components
 
 import (
 	"fmt"
-	"github.com/mmcdole/runes/pkg/client/history"
-	"github.com/mmcdole/runes/pkg/client/terminal"
+	"github.com/mmcdole/runes/pkg/history"
+	"github.com/mmcdole/runes/pkg/terminal"
 	"github.com/mmcdole/runes/pkg/client/ui/layout"
 )
 
